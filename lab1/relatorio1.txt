@@ -202,6 +202,8 @@ Não, pois cada processo tem a sua própria stack, ou seja, um variável salva n
 processo não pode ser utilizada por outro processo. Foi perceptível pois no processo do filho,
 mesmo ordenando o vetor nesse processo, o vetor no pai não foi alterado, o que mostra que mesmo
 as variáveis tendo o mesmo valor e nome, elas são diferentes por estarem em stacks diferentes.
+Além disso, vale ressaltar que a função quicksort não é de autoria própria, e sim de um site. Porém, a função foi
+utilizada apenas para testar a hipótese de ambos os processos utilizarem o mesmo vetor na memória.
 -----------------------------------------------------
 
 Questão 4) Modifique o programa anterior para que o filho execute um programa elaborado
