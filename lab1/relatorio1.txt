@@ -42,7 +42,7 @@ Programa terminado!
 CONCLUSÃO
 
 No programa, foi criada a variável pid que é reponsável por guardar o pid do processo
-filho que o fork() (programa que faz cópia do processo atual e gera um processo filho). 
+filho que o fork() (função que faz cópia do processo atual e gera um processo filho). 
 Com isso, há um if e else que, se o pid for igual a 0, é porque ele é filho, enquanto se for
 diferente, é o pai. Isso acontece porque como o pid é o processo filho, o próprio processo filho
 não criou outro, então o valor do pid nesse caso é zero. Já no pai não é zero justamene por que 
