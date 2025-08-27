@@ -1,4 +1,4 @@
-Bento Bruno  -  
+Bento Bruno Contarini Gonçalves  -  2311122
 Mayara Ramos Damazio - 2210833
 
 Questão 1) Faça um programa para criar dois processos, o pai escreve seu pid e espera o
