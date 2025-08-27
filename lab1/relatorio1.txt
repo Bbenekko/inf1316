@@ -1,0 +1,280 @@
+Bento Bruno  -  
+Mayara Ramos Damazio - 2210833
+
+Questão 1) Faça um programa para criar dois processos, o pai escreve seu pid e espera o
+filho terminar e o filho escreve o seu pid e termina.
+-----------------------------------------------------
+ARQUIVO ex1.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
+        waitpid(-1, &status, 0);
+    }else 
+    { //Filho
+        printf("Filho,  Pid: %d\n", getpid());
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex1 ex1.c
+$./ex1
+-----------------------------------------------------
+RESULTADO
+
+Pai, Pid proprio: 36422 e Pid do filho: 36423
+Filho,  Pid: 36423
+Programa terminado!
+-----------------------------------------------------
+CONCLUSÃO
+
+No programa, foi criada a variável pid que é reponsável por guardar o pid do processo
+filho que o fork() (programa que faz cópia do processo atual e gera um processo filho). 
+Com isso, há um if e else que, se o pid for igual a 0, é porque ele é filho, enquanto se for
+diferente, é o pai. Isso acontece porque como o pid é o processo filho, o próprio processo filho
+não criou outro, então o valor do pid nesse caso é zero. Já no pai não é zero justamene por que 
+consegiu criar perfeitamente o filho. Com isso, ele entra primeiramente no caso em que é o pai, printa o pid 
+do filho e o próprio e depois espera o processo do filho terminar. no processo do filho, ele entra no caso do
+else, que printa o próprio pid e o número printado é exatamente o mesmo visualizado no print anterior. Após
+terminar de executar, ele volta para o pai e o programa acaba. 
+-----------------------------------------------------
+
+Questão 2) Agora, usando a mesma estrutura de processos pai e filho, declare uma
+variável visível ao pai e ao filho, no pai inicialize a variável com1 e imprima seu
+valor antes do fork(). No filho, altere o valor da variável para 5 e imprima o seu
+valor antes do exit(). Agora, no pai, imprima novamente o valor da variável após o
+filho ter alterado a variável - após a waitpid(). Justifique os resultados obtidos.
+-----------------------------------------------------
+ARQUIVO ex2.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    int var = 1;
+    printf("Variavel: %d\n", var);
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
+        waitpid(-1, &status, 0);
+        printf("Pai: Variavel: %d\n", var);
+
+    }else 
+    { //Filho
+        printf("Filho,  Pid: %d\n", getpid());
+
+        var = 5;
+        printf("Filho: Variavel: %d\n", var);
+
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex2 ex2.c
+$./ex2
+-----------------------------------------------------
+RESULTADO
+Variavel: 1
+Pai, Pid proprio: 36444 e Pid do filho: 36445
+Filho,  Pid: 36445
+Filho: Variavel: 5
+Programa terminado!
+Pai: Variavel: 1
+-----------------------------------------------------
+CONCLUSÃO
+
+Não houve mudança na variável do processo do pai, ocorrendo apenas na variável do processo do filho. Isso
+faz refletir que as variáveis, por mais que sejam do mesmo tipo e tenham o mesmo nome, não são realmente as
+mesmas, ou seja, processos diferentes, mesmo que pais, filhos, netos... não compartilham a mesma stack e,
+portanto, as mesmas variáveis.
+-----------------------------------------------------
+
+Questão 3) Use o programa anterior para ler e ordenar um vetor de 10 posições. O filho
+ordena o vetor e o pai exibe os dados do vetor antes do fork() e depois do
+waitpid(). Eles usarão o mesmo vetor na memória? Justifique.
+-----------------------------------------------------
+ARQUIVO ex3.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+void exibe(int v[])
+{
+    printf("Vetor: {");
+    for(int i = 0; i < 10; i++)
+    {
+        printf("%d, ", v[i]);
+    }
+    printf("}\n");
+}
+
+void quicksort(int num, int *vetor) 
+{
+    if (num <= 1)
+        return;
+    else 
+    {
+        int x = vetor[0];
+        int a = 1;
+        int b = num - 1;
+        do 
+        {
+            while (a < num && vetor[a] <= x)
+                a++;
+            while (vetor[b] > x)
+                b--;
+            if (a < b) {
+                int aux = vetor[a];
+                vetor[a] = vetor[b];
+                vetor[b] = aux;
+                a++;
+                b--;
+            }
+        } while (a <= b);
+
+        vetor[0] = vetor[b];
+        vetor[b] = x;
+        
+        quicksort(b, vetor);
+        quicksort(num - a, &vetor[a]);
+    }
+}
+
+int main(void)
+{
+    int  pid, status;
+    int vec[] = {7, 8, 9, 0, 4, 5, 6, 1 ,2 ,3};
+    exibe(vec);
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
+        waitpid(-1, &status, 0);
+        exibe(vec);
+    }else 
+    { //Filho
+        printf("Filho,  Pid: %d\n", getpid());
+        quicksort(10, vec);
+        exibe(vec);
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex3 ex3.c
+$./ex3
+-----------------------------------------------------
+RESULTADO
+
+Vetor: {7, 8, 9, 0, 4, 5, 6, 1, 2, 3, }
+Pai, Pid proprio: 36466 e Pid do filho: 36467
+Filho,  Pid: 36467
+Vetor: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, }
+Programa terminado!
+Vetor: {7, 8, 9, 0, 4, 5, 6, 1, 2, 3, }
+-----------------------------------------------------
+
+CONCLUSÃO 
+
+
+Não, pois cada processo tem a sua própria stack, ou seja, um variável salva na stack de um
+processo não pode ser utilizada por outro processo. Foi perceptível pois no processo do filho,
+mesmo ordenando o vetor nesse processo, o vetor no pai não foi alterado, o que mostra que mesmo
+as variáveis tendo o mesmo valor e nome, elas são diferentes por estarem em stacks diferentes.
+-----------------------------------------------------
+
+Questão 4) Modifique o programa anterior para que o filho execute um programa elaborado
+por você, que mande imprimir uma mensagem qualquer no vídeo, por exemplo,
+“alo mundo”. Em seguida altere o programa do item 4 para o filho executar o
+programa echo da shell.
+-----------------------------------------------------
+ARQUIVO hello.c
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main()
+{
+    printf("Alo mundo!\n");
+    return 0;
+}
+
+-----------------------------------------------------
+
+ARQUIVO ex4_1.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
+        if (waitpid(pid, &status, 0) == pid)
+        {
+            printf("Programa terminado com retorno em 0!\n");
+        }
+    }else 
+    { //Filho
+        printf("Filho,  Pid: %d\n", getpid());
+        execle("/home/neco/Documents/sistemas_operacionais/lab1/hello", "/home/neco/Documents/sistemas_operacionais/lab1/hello", NULL, (char *)0);
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o hello hello.c
+$gcc -Wall -o ex41 ex4_1.c
+$./ex41
+-----------------------------------------------------
+RESULTADO
+
+Pai, Pid proprio: 36504 e Pid do filho: 36505
+Filho,  Pid: 36505
+Programa terminado!
+Programa terminado com retorno em 0!
+-----------------------------------------------------
+CONCLUSÃO
+
+
+
+
+

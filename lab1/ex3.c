@@ -14,55 +14,36 @@ void exibe(int v[])
     printf("}\n");
 }
 
-void quicksort(int num, int *vetor) {
+void quicksort(int num, int *vetor) 
+{
+    if (num <= 1)
+        return;
+    else 
+    {
+        int x = vetor[0];
+        int a = 1;
+        int b = num - 1;
+        do 
+        {
+            while (a < num && vetor[a] <= x)
+                a++;
+            while (vetor[b] > x)
+                b--;
+            if (a < b) {
+                int aux = vetor[a];
+                vetor[a] = vetor[b];
+                vetor[b] = aux;
+                a++;
+                b--;
+            }
+        } while (a <= b);
 
-if (num <= 1)
-
-return;
-
-else {
-
-int x = vetor[0];
-
-int a = 1;
-
-int b = num - 1;
-
-do {
-
-while (a < num && vetor[a] <= x)
-
-a++;
-
-while (vetor[b] > x)
-
-b--;
-
-if (a < b) {
-
-int aux = vetor[a];
-
-vetor[a] = vetor[b];
-
-vetor[b] = aux;
-
-a++;
-
-b--;
-
-}
-
-} while (a <= b);
-
-vetor[0] = vetor[b];
-
-vetor[b] = x;
-
-quicksort(b, vetor);
-
-quicksort(num - a, &vetor[a]);
-
-}
+        vetor[0] = vetor[b];
+        vetor[b] = x;
+        
+        quicksort(b, vetor);
+        quicksort(num - a, &vetor[a]);
+    }
 }
 
 int main(void)
