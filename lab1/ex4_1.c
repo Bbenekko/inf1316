@@ -17,8 +17,8 @@ int main(void)
         }
     }else 
     { //Filho
-        printf("Filho,  Pid: %d\n", getpid());
-        execle("/home/neco/Documents/sistemas_operacionais/lab1/hello", "/home/neco/Documents/sistemas_operacionais/lab1/hello", NULL, (char *)0);
+        printf("Filho,  Pid: %d, Pid do pai: %d\n", getpid(), getppid());
+        execle("hello", "hello", NULL, (char *)0);
         printf("Programa terminado!\n");
         exit(3);
     }

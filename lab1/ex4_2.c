@@ -7,19 +7,16 @@
 int main(void)
 {
     int  pid, status;
-    int var = 1;
-    printf("Variavel: %d\n", var);
     pid = fork();
     if (pid!=0)
     { //Pai
-        waitpid(-1, &status, 0);
-        printf("Pai: Variavel: %d\n", var);
-
+        if (waitpid(pid, &status, 0) == pid)
+        {
+            printf("Programa terminado com retorno em 0!\n");
+        }
     }else 
     { //Filho
-        var = 5;
-        printf("Filho: Variavel: %d\n", var);
-
+        system("echo Alo mundo!");
         printf("Programa terminado!\n");
         exit(3);
     }

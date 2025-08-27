@@ -54,12 +54,11 @@ int main(void)
     pid = fork();
     if (pid!=0)
     { //Pai
-        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
         waitpid(-1, &status, 0);
         exibe(vec);
     }else 
     { //Filho
-        printf("Filho,  Pid: %d\n", getpid());
+        printf("Filho: ");
         quicksort(10, vec);
         exibe(vec);
         printf("Programa terminado!\n");

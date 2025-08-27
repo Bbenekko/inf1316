@@ -74,14 +74,11 @@ int main(void)
     pid = fork();
     if (pid!=0)
     { //Pai
-        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
         waitpid(-1, &status, 0);
         printf("Pai: Variavel: %d\n", var);
 
     }else 
     { //Filho
-        printf("Filho,  Pid: %d\n", getpid());
-
         var = 5;
         printf("Filho: Variavel: %d\n", var);
 
@@ -98,8 +95,6 @@ $./ex2
 -----------------------------------------------------
 RESULTADO
 Variavel: 1
-Pai, Pid proprio: 36444 e Pid do filho: 36445
-Filho,  Pid: 36445
 Filho: Variavel: 5
 Programa terminado!
 Pai: Variavel: 1
@@ -174,12 +169,11 @@ int main(void)
     pid = fork();
     if (pid!=0)
     { //Pai
-        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
         waitpid(-1, &status, 0);
         exibe(vec);
     }else 
     { //Filho
-        printf("Filho,  Pid: %d\n", getpid());
+        printf("Filho: ");
         quicksort(10, vec);
         exibe(vec);
         printf("Programa terminado!\n");
@@ -196,9 +190,7 @@ $./ex3
 RESULTADO
 
 Vetor: {7, 8, 9, 0, 4, 5, 6, 1, 2, 3, }
-Pai, Pid proprio: 36466 e Pid do filho: 36467
-Filho,  Pid: 36467
-Vetor: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, }
+Filho: Vetor: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, }
 Programa terminado!
 Vetor: {7, 8, 9, 0, 4, 5, 6, 1, 2, 3, }
 -----------------------------------------------------
@@ -219,11 +211,15 @@ programa echo da shell.
 -----------------------------------------------------
 ARQUIVO hello.c
 
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 int main()
 {
+    printf("hello,  Pid: %d, Pid do pai: %d\n", getpid(), getppid());
     printf("Alo mundo!\n");
     return 0;
 }
@@ -251,8 +247,8 @@ int main(void)
         }
     }else 
     { //Filho
-        printf("Filho,  Pid: %d\n", getpid());
-        execle("/home/neco/Documents/sistemas_operacionais/lab1/hello", "/home/neco/Documents/sistemas_operacionais/lab1/hello", NULL, (char *)0);
+        printf("Filho,  Pid: %d, Pid do pai: %d\n", getpid(), getppid());
+        execle("hello", "hello", NULL, (char *)0);
         printf("Programa terminado!\n");
         exit(3);
     }
@@ -260,19 +256,75 @@ int main(void)
 }
 
 -----------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO
+
+ARQUIVO ex4_2.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        if (waitpid(pid, &status, 0) == pid)
+        {
+            printf("Programa terminado com retorno em 0!\n");
+        }
+    }else 
+    { //Filho
+        system("echo Alo mundo!");
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 1
 $gcc -Wall -o hello hello.c
 $gcc -Wall -o ex41 ex4_1.c
 $./ex41
+
 -----------------------------------------------------
 RESULTADO
 
-Pai, Pid proprio: 36504 e Pid do filho: 36505
-Filho,  Pid: 36505
+Pai, Pid proprio: 865986 e Pid do filho: 865987
+Filho,  Pid: 865987, Pid do pai: 865986
+hello,  Pid: 865987, Pid do pai: 865986
+Alo mundo!
+Programa terminado com retorno em 0!
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 2
+$gcc -Wall -o ex42 ex4_2.c
+$./ex42
+
+-----------------------------------------------------
+RESULTADO
+
+Alo mundo!
 Programa terminado!
 Programa terminado com retorno em 0!
 -----------------------------------------------------
 CONCLUSÃO
+
+Na parte 1, após fazer o fork e o processo pai começar a esperar o filho terminar de rodar, o processo filho utiliza o comando execle
+para iniciar o processo que inicia com a execução do executável hello oriundo da compilação do programa hello.c . Com isso, o programa 
+executa os comandos presentes no código de hello.c e, após terminar, volta para o processo pai. Com isso, foi perceptível que o comando
+execle substitui o processo filho pelo que é passado para ele, com o novo virando o próprio filho original e por isso, ele retorna para
+o pai, e não para o resto da execução do antigo filho, o que está de acordo com o manual da função execle: "The  exec()  family  of  
+functions replaces the current process image with a new process image.". 
+
+Na parte 2, após fazer o fork e o pai começar a esperar o filho terminar de rodar, o processo filho, utilizando o comando system(), ele
+executa o echo para que ele printe alguma coisa no terminal e depois continua a executar normalmente o processo do filho e depois volta
+para o pai. Com isso, foi perceptível que não houve substituição de processos, e sim a criação de um processo filho que printa na shell
+e retornou normalmente para o comando que o executou, que é o filho original.
+
 
 
 
