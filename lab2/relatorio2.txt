@@ -1,0 +1,480 @@
+Bento Bruno Contarini Gonçalves  -  2311122
+Mayara Ramos Damazio - 2210833
+
+Questão 1) Soma de matrizes
+Faça um programa para somar matrizes de acordo com o seguinte algoritmo:
+O primeiro processo irá criar duas matrizes preenchidas e uma terceira vazia
+em 3 áreas de memória compartilhada.
+
+Para cada linha da matriz solução, o seu programa deverá gerar um processo para
+o seu cálculo.
+
+OBS: implemente as matrizes como vetores de tamanho (linha x coluna) e aloque
+a shared memory para os vetores correspondentes, pois acessar os elementos (i,j)
+é complexo.
+
+Filho 1  |5 7 9|   |5 3 0|    |10 10 9| 
+Filho 2  |6 3 6| + |6 2 6| =  |12 5 12| 
+Filho 3  |3 1 2|   |5 7 0|    |8  8  2| 
+-----------------------------------------------------
+ARQUIVO ex1.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+void printaMatriz(int i, int j, int* m)
+{
+    for (int k = 0; k < i; k++)
+    {
+        for(int l = 0; l < j; l++)
+        {
+            printf("%d ", *m);
+            m++;
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+
+int main (int argc, char *argv[])
+{
+    int mv1, mv2, mv3, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
+    int i, j; //i -> linha // j -> coluna
+
+    int v1p[] = {5,7,9,6,3,6,3,1,2};
+    int v2p[] = {5,3,0,6,2,6,5,7,0};
+    i = 3;
+    j = 3;
+   
+/*     printf("Insira a qtd de linhas: ");
+    scanf("%d", &i);
+    printf("\n");
+
+    printf("\nInsira a qtd de colunas: ");
+    scanf("%d", &j); */
+
+    mv1 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+    mv2 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+    mv3 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+
+    // associa a memória compartilhada ao processo
+    v1 = (int *) shmat (mv1, 0, 0); // comparar o retorno com -1
+    v2 = (int *) shmat (mv2, 0, 0); // comparar o retorno com -1
+    v3 = (int *) shmat (mv3, 0, 0); // comparar o retorno com -1
+
+    v1r = v1;
+    v2r = v2;
+    v3r = v3;    
+
+    //printf("Insira os numeros da primeira matriz: ");
+    for (int l = 0; l < i * j; l++)
+    {
+        //scanf("%d", v1 + l);
+        v1[l] = v1p[l];
+    }
+    //printf("Insira os numeros da segunda matriz: ");
+    for (int l = 0; l < i * j; l++)
+    {
+        //scanf("%d", v2 + l);
+        v2[l] = v2p[l];
+    }
+    printf("\n");
+    printaMatriz(i, j, v1r);       
+    printaMatriz(i, j, v2r);    
+ 
+    for(int l = 0; l < i; l++)
+    {
+        if (l != 0)
+        {
+            v1 += j;
+            v2 += j;
+            v3 += j;
+        }
+        id = fork();   
+        if (id < 0)
+        {
+            puts ("Erro na criação do novo processo");
+            exit (-2);
+        }
+        else if (id == 0)
+        {
+            printf(" filho: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
+            for(int m = 0; m < j; m++)
+            {
+                *v3 = *v1 + *v2;
+                printf("%d + %d = %d \n", *v1, *v2, *v3);
+                v3++;
+                v2++;
+                v1++;
+            }
+            printf("\n");
+            exit(0);
+        }
+    }
+
+    for(int l = 0; l < i; l++)
+    {    
+        wait(&status);             
+    }
+    printf("pai: pid proprio: %d \n", getpid());
+    printaMatriz(i, j, v3r);  
+    // libera a memória compartilhada do processo
+    shmdt (v1r);
+    shmdt (v2r);
+    shmdt (v3r);
+
+    // libera a memória compartilhada
+    shmctl (mv1, IPC_RMID, 0);
+    shmctl (mv2, IPC_RMID, 0);
+    shmctl (mv3, IPC_RMID, 0);
+    
+    return 0;
+}
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex1 ex1.c
+$./ex1
+-----------------------------------------------------
+RESULTADO
+
+5 7 9 
+6 3 6 
+3 1 2 
+
+5 3 0 
+6 2 6 
+5 7 0 
+
+filho: id do fork: 0 // pid proprio: 1233965 // pid do pai: 1233964
+5 + 5 = 10 
+7 + 3 = 10 
+9 + 0 = 9 
+
+filho: id do fork: 0 // pid proprio: 1233966 // pid do pai: 1233964
+6 + 6 = 12 
+3 + 2 = 5 
+6 + 6 = 12 
+
+filho: id do fork: 0 // pid proprio: 1233967 // pid do pai: 1233964
+3 + 5 = 8 
+1 + 7 = 8 
+2 + 0 = 2 
+
+pai: pid proprio: 1233964 
+10 10 9 
+12 5 12 
+8 8 2 
+-----------------------------------------------------
+CONCLUSÃO
+
+
+-----------------------------------------------------
+
+Questão 2) Mensagem do Dia
+Faça um programa que:
+Leia uma mensagem do dia do stdin (ou arquivo);
+
+Crie uma memória compartilhada com a chave 8752;
+
+Salve a mensagem na memória;
+
+Faça um outro programa “cliente” que utilize a mesma chave (8752)
+e exiba a mensagem do dia para o usuário.
+-----------------------------------------------------
+ARQUIVO ex2.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    int var = 1;
+    printf("Variavel: %d\n", var);
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        waitpid(-1, &status, 0);
+        printf("Pai: Variavel: %d\n", var);
+
+    }else 
+    { //Filho
+        var = 5;
+        printf("Filho: Variavel: %d\n", var);
+
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex2 ex2.c
+$./ex2
+-----------------------------------------------------
+RESULTADO
+Variavel: 1
+Filho: Variavel: 5
+Programa terminado!
+Pai: Variavel: 1
+-----------------------------------------------------
+CONCLUSÃO
+
+Não houve mudança na variável do processo do pai, ocorrendo apenas na variável do processo do filho. Isso
+faz refletir que as variáveis, por mais que sejam do mesmo tipo e tenham o mesmo nome, não são realmente as
+mesmas, ou seja, processos diferentes, mesmo que pais, filhos, netos... não compartilham a mesma stack e,
+portanto, as mesmas variáveis.
+-----------------------------------------------------
+
+Questão 3) Busca paralela em vetor
+Faça um programa paralelo (com pelo menos 4 processos) para localizar 
+uma chave em um vetor.
+
+Crie uma memória compartilhada com dados numéricos inteiros e desordenados e a divida
+pelo número de processos;
+
+Cada processo deve procurar o dado na sua área de memória e informar a posição onde o
+dado foi localizado. 
+-----------------------------------------------------
+ARQUIVO ex3.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main (int argc, char *argv[])
+{
+    int segmento, segmento2, *v, *vr, *ind, id, status, tamVetor= 20;
+
+    // aloca a memória compartilhada
+    segmento = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    segmento2 = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+    // associa a memória compartilhada ao processo
+    v = (int *) shmat (segmento, 0, 0); // comparar o retorno com -1
+    ind = (int *) shmat (segmento2, 0, 0); // comparar o retorno com -1
+
+    *ind = -1;
+    v[0] = 9; v[1] = 1; v[2] = 15; v[3] = 18; v[4] = 3; v[5] = 13; v[6] = 4; v[7] = 19; v[8] = 20; v[9] = 2;
+    v[10] = 7; v[11] = 14; v[12] = 6; v[13] = 11; v[14] = 10; v[15] = 5; v[16] = 8; v[17] = 12; v[18] = 17; v[19] = 16;
+
+    const int qtdSegmentos = 5;
+    const int key = 12;
+
+    vr = v;
+
+    for(int i = 0; i < qtdSegmentos; i++)
+    {
+        if (i > 0)
+            v+=4;
+        if ((id = fork()) < 0)
+        {
+            puts ("Erro na criação do novo processo\n");
+            exit (-2);
+        }
+        else if (id == 0)
+        {
+            printf(" filho: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
+            for(int j = 0; j < tamVetor/qtdSegmentos; j++)
+            {
+                if (*(v+j) == key)
+                {
+                    *ind = i * 4 + j;
+                    printf("Pid do filho que achou a chave: %d\n", getpid());
+                }
+
+            }
+            exit(0);
+        }
+    }
+    for (int i = 0; i < qtdSegmentos; i++)
+    {
+        wait(&status);
+        printf ("Processo pai -- ind da chave = %d\n", *ind);
+    }
+
+    // libera a memória compartilhada do processo
+    shmdt (vr);
+    shmdt (ind);
+
+    // libera a memória compartilhada
+    shmctl (segmento, IPC_RMID, 0);
+    shmctl (segmento2, IPC_RMID, 0);
+    
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex3 ex3.c
+$./ex3
+-----------------------------------------------------
+RESULTADO
+
+filho: id do fork: 0 // pid proprio: 1233498 // pid do pai: 1233497
+filho: id do fork: 0 // pid proprio: 1233499 // pid do pai: 1233497
+filho: id do fork: 0 // pid proprio: 1233500 // pid do pai: 1233497
+filho: id do fork: 0 // pid proprio: 1233501 // pid do pai: 1233497
+Processo pai -- ind da chave = -1
+Processo pai -- ind da chave = -1
+filho: id do fork: 0 // pid proprio: 1233502 // pid do pai: 1233497
+Processo pai -- ind da chave = -1
+Pid do filho que achou a chave: 1233502
+Processo pai -- ind da chave = 17
+Processo pai -- ind da chave = 17
+-----------------------------------------------------
+
+CONCLUSÃO 
+
+
+
+-----------------------------------------------------
+
+Questão 4) Multiplicação multi-processo
+Faça um programa que:
+Tenha um processo pai que abre dois blocos de memória compartilhada, m1 e m2;
+
+Cria dois processos filho (use exec), P1 e P2: estes também fazem attach em m1
+ou m2 respectivamente;
+
+Cada um dá um sleep() randômico e escreve um valor int na área compartilhada dele,
+e avisa o processo pai que um novo valor foi gerado, escrevendo tb um nr de sequencia;
+
+O pai fica em loop verificando se houve um novo valor.Apenas quando ambos P1 e P2 geraram
+um novo valor, o pai imprime o produto dos valores gerados por P1 e P2.
+-----------------------------------------------------
+ARQUIVO hello.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main()
+{
+    printf("hello,  Pid: %d, Pid do pai: %d\n", getpid(), getppid());
+    printf("Alo mundo!\n");
+    return 0;
+}
+
+-----------------------------------------------------
+
+ARQUIVO ex4_1.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        printf("Pai, Pid proprio: %d e Pid do filho: %d\n", getpid(), pid);
+        if (waitpid(pid, &status, 0) == pid)
+        {
+            printf("Programa terminado com retorno em 0!\n");
+        }
+    }else 
+    { //Filho
+        printf("Filho,  Pid: %d, Pid do pai: %d\n", getpid(), getppid());
+        execle("hello", "hello", NULL, (char *)0);
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+
+ARQUIVO ex4_2.c
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int  pid, status;
+    pid = fork();
+    if (pid!=0)
+    { //Pai
+        if (waitpid(pid, &status, 0) == pid)
+        {
+            printf("Programa terminado com retorno em 0!\n");
+        }
+    }else 
+    { //Filho
+        system("echo Alo mundo!");
+        printf("Programa terminado!\n");
+        exit(3);
+    }
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 1
+$gcc -Wall -o hello hello.c
+$gcc -Wall -o ex41 ex4_1.c
+$./ex41
+
+-----------------------------------------------------
+RESULTADO
+
+Pai, Pid proprio: 865986 e Pid do filho: 865987
+Filho,  Pid: 865987, Pid do pai: 865986
+hello,  Pid: 865987, Pid do pai: 865986
+Alo mundo!
+Programa terminado com retorno em 0!
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 2
+$gcc -Wall -o ex42 ex4_2.c
+$./ex42
+
+-----------------------------------------------------
+RESULTADO
+
+Alo mundo!
+Programa terminado!
+Programa terminado com retorno em 0!
+-----------------------------------------------------
+CONCLUSÃO
+
+Na parte 1, após fazer o fork e o processo pai começar a esperar o filho terminar de rodar, o processo filho utiliza o comando execle
+para iniciar o processo que inicia com a execução do executável hello oriundo da compilação do programa hello.c . Com isso, o programa 
+executa os comandos presentes no código de hello.c e, após terminar, volta para o processo pai. Com isso, foi perceptível que o comando
+execle substitui o processo filho pelo que é passado para ele, com o novo virando o próprio filho original e por isso, ele retorna para
+o pai, e não para o resto da execução do antigo filho, o que está de acordo com o manual da função execle: "The  exec()  family  of  
+functions replaces the current process image with a new process image.". 
+
+Na parte 2, após fazer o fork e o pai começar a esperar o filho terminar de rodar, o processo filho, utilizando o comando system(), ele
+executa o echo para que ele printe alguma coisa no terminal e depois continua a executar normalmente o processo do filho e depois volta
+para o pai. Com isso, foi perceptível que não houve substituição de processos, e sim a criação de um processo filho que printa na shell
+e retornou normalmente para o comando que o executou, que é o filho original.
+
+
+
+
+
+
