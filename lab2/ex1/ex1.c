@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MANUAL 0
 
 void printaMatriz(int i, int j, int* m)
 {
@@ -26,20 +27,22 @@ int main (int argc, char *argv[])
 {
     int mv1, mv2, mv3, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
 
-    int i, j; //i -> linha // j -> coluna
+    int i, j; //i -> linha // j -> coluna 
 
-    int v1p[] = {5,7,9,6,3,6,3,1,2};
-    int v2p[] = {5,3,0,6,2,6,5,7,0};
-
-    i = 3;
-    j = 3;
-   
-/*     printf("Insira a qtd de linhas: ");
+    #if MANUAL == 1  
+    printf("Insira a qtd de linhas: ");
     scanf("%d", &i);
     printf("\n");
 
     printf("\nInsira a qtd de colunas: ");
-    scanf("%d", &j); */
+    scanf("%d", &j); 
+    #else
+    int v1p[] = {5,7,9,6,3,6,3,1,2};
+    int v2p[] = {5,3,0,6,2,6,5,7,0};
+    i = 3;
+    j = 3;
+    #endif
+
 
     mv1 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
     mv2 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
@@ -54,17 +57,28 @@ int main (int argc, char *argv[])
     v2r = v2;
     v3r = v3;    
 
-    //printf("Insira os numeros da primeira matriz: ");
+    #if MANUAL == 1  
+    printf("Insira os numeros da primeira matriz: ");
+    #endif
     for (int l = 0; l < i * j; l++)
     {
-        //scanf("%d", v1 + l);
+        #if MANUAL == 1  
+        scanf("%d", v1 + l);
+        #else
         v1[l] = v1p[l];
+        #endif
     }
-    //printf("Insira os numeros da segunda matriz: ");
+
+    #if MANUAL == 1  
+    printf("Insira os numeros da segunda matriz: ");
+    #endif
     for (int l = 0; l < i * j; l++)
     {
-        //scanf("%d", v2 + l);
+        #if MANUAL == 1  
+        scanf("%d", v2 + l);
+        #else
         v2[l] = v2p[l];
+        #endif
     }
     printf("\n");
     printaMatriz(i, j, v1r);       
