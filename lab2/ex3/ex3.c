@@ -30,7 +30,7 @@ int main (int argc, char *argv[])
     for(int i = 0; i < qtdSegmentos; i++)
     {
         if (i > 0)
-            v+=4;
+            v+=tamVetor/qtdSegmentos;
         if ((id = fork()) < 0)
         {
             puts ("Erro na criação do novo processo\n");

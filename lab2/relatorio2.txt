@@ -27,6 +27,8 @@ ARQUIVO ex1.c
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MANUAL 0
+
 void printaMatriz(int i, int j, int* m)
 {
     for (int k = 0; k < i; k++)
@@ -45,19 +47,23 @@ void printaMatriz(int i, int j, int* m)
 int main (int argc, char *argv[])
 {
     int mv1, mv2, mv3, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
-    int i, j; //i -> linha // j -> coluna
 
-    int v1p[] = {5,7,9,6,3,6,3,1,2};
-    int v2p[] = {5,3,0,6,2,6,5,7,0};
-    i = 3;
-    j = 3;
-   
-/*     printf("Insira a qtd de linhas: ");
+    int i, j; //i -> linha // j -> coluna 
+
+    #if MANUAL == 1  
+    printf("Insira a qtd de linhas: ");
     scanf("%d", &i);
     printf("\n");
 
     printf("\nInsira a qtd de colunas: ");
-    scanf("%d", &j); */
+    scanf("%d", &j); 
+    #else
+    int v1p[] = {5,7,9,6,3,6,3,1,2};
+    int v2p[] = {5,3,0,6,2,6,5,7,0};
+    i = 3;
+    j = 3;
+    #endif
+
 
     mv1 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
     mv2 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
@@ -72,17 +78,28 @@ int main (int argc, char *argv[])
     v2r = v2;
     v3r = v3;    
 
-    //printf("Insira os numeros da primeira matriz: ");
+    #if MANUAL == 1  
+    printf("Insira os numeros da primeira matriz: ");
+    #endif
     for (int l = 0; l < i * j; l++)
     {
-        //scanf("%d", v1 + l);
+        #if MANUAL == 1  
+        scanf("%d", v1 + l);
+        #else
         v1[l] = v1p[l];
+        #endif
     }
-    //printf("Insira os numeros da segunda matriz: ");
+
+    #if MANUAL == 1  
+    printf("Insira os numeros da segunda matriz: ");
+    #endif
     for (int l = 0; l < i * j; l++)
     {
-        //scanf("%d", v2 + l);
+        #if MANUAL == 1  
+        scanf("%d", v2 + l);
+        #else
         v2[l] = v2p[l];
+        #endif
     }
     printf("\n");
     printaMatriz(i, j, v1r);       
@@ -173,7 +190,24 @@ pai: pid proprio: 1233964
 -----------------------------------------------------
 CONCLUSÃO
 
-
+No programa, foram alocadas 3 áreas na memória compartilhada do tamanho
+da quantidade de elementos da matriz. O programa foi inteiro pensado e criado
+para matrizes de qualquer tamanho de forma que se pode escolher entre o modo 
+manual ou não pelo define MANUAL em que, se for 0, ele vai usar a matriz dada
+como exemplo e, se for 1, ele vai somar as matrizes de tamanho e valores que o 
+usuário escolher. Com isso, para cada linha, é criado um novo processo que faz 
+a soma índice a índice das matrizes. Para essa soma funcionar pegando os índices 
+corretos, antes do fork o ponteiro para o vetor é acrescentado com a quantidade de
+colunas para que o próximo processo a ser criado esteja modificado e o novo processo
+possa fazer as operações nos índices corretos. Nos processos, cada um pega o conteúdo
+apontado pelos vetores, soma, guarda o resultado em um outro vetor e incrementa o vetor em 1
+para andar pelo vetor. A alteração do conteúdo apontado é feita perfeitamente, diferentemente do
+acréscimo ao vetor que só tem efeito dentro do processo que não são variáveis na memória 
+compartilhada, e sim que apenas guardam endereços dessa área. Por isso foi necessária a 
+atualização dos ponteiros antes do fork. Como houve alteração dos poteiros para os vetores, foram
+criados vetores reservas (v1r, v2r e v3r) que guardam o valor original e a liberação de memória é
+feita com eles. Como mostra a saída, cada filho fez a soma
+e no final é mostrada a matriz resultante. 
 -----------------------------------------------------
 
 Questão 2) Mensagem do Dia
@@ -262,17 +296,17 @@ int main (int argc, char *argv[])
 
     // aloca a memória compartilhada
     segmento = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    segmento2 = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    segmento2 = shmget (IPC_PRIVATE, sizeof (int), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
     // associa a memória compartilhada ao processo
     v = (int *) shmat (segmento, 0, 0); // comparar o retorno com -1
     ind = (int *) shmat (segmento2, 0, 0); // comparar o retorno com -1
-
     *ind = -1;
     v[0] = 9; v[1] = 1; v[2] = 15; v[3] = 18; v[4] = 3; v[5] = 13; v[6] = 4; v[7] = 19; v[8] = 20; v[9] = 2;
     v[10] = 7; v[11] = 14; v[12] = 6; v[13] = 11; v[14] = 10; v[15] = 5; v[16] = 8; v[17] = 12; v[18] = 17; v[19] = 16;
 
     const int qtdSegmentos = 5;
+
     const int key = 12;
 
     vr = v;
@@ -280,7 +314,7 @@ int main (int argc, char *argv[])
     for(int i = 0; i < qtdSegmentos; i++)
     {
         if (i > 0)
-            v+=4;
+            v+=tamVetor/qtdSegmentos;
         if ((id = fork()) < 0)
         {
             puts ("Erro na criação do novo processo\n");
@@ -340,7 +374,20 @@ Processo pai -- ind da chave = 17
 
 CONCLUSÃO 
 
-
+No programa, são criados, na memória compartilhada, o vetor que tem as chaves e o inteiro
+que deve guardar o índice da chave que algum dos processos achará. Foi escolhido, para diminuir
+o escopo, um vetor de 20 posições. Dentre as possíveis chave, foi escolhida a chave 14 que está 
+no índice 11. Foi escolhido o uso de 5 processos, sendo assim, cada um iria procurar a chave em um
+espaço com 4 chaves ao invés de 20. Literalmente a ideia de dividir para conquistar. Antes do fork, 
+o vetor é incrementado pelo tamanho do vetor divido pela quantidade de processos utilizados, no qual
+pois assim passa para o próximo processo o endereço exato em que ele deve começar a procurar. Quando 
+o processo acha, ele muda a variável ind responsável por guardar o índice. Como houve acréscimo na
+no ponteiro inicial do vetor, foi feita uma cópia do endereço no vetor reserva vr e ele é usado na 
+liberação de memória. Pelos prints, é perceptível que ambos os processos ocorrem em tempos parecidos e 
+ao executar várias vezes, às vezes, outro processo termina primeiro do que o processo que acha chave, que
+é o que leva a saída printar alguma vez o valor -1, ao mesmo tempo que, mesmo esse índice estando na parte 
+em que o último processo procura, ele também é processado antes de outros, o que faz com que o valor já esteja
+correto após a finalização de outros processos.
 
 -----------------------------------------------------
 
