@@ -22,17 +22,17 @@ int main (int argc, char *argv[])
     segmento1 = shmget (chave1, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
     // associa a memória compartilhada ao processo
-    bloco* p1 = (bloco *) shmat (segmento1, 0, 0); // comparar o retorno com -1
-    p1->valor = 0;
-    p1->seq = 0;
+    bloco* m1 = (bloco *) shmat (segmento1, 0, 0); // comparar o retorno com -1
+    m1->valor = 0;
+    m1->seq = 0;
 
 
     segmento2 = shmget (chave2, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    bloco* p2 = (bloco *) shmat (segmento2, 0, 0);
-    p2->valor = 0;
-    p2->seq = 0;
+    bloco* m2 = (bloco *) shmat (segmento2, 0, 0);
+    m2->valor = 0;
+    m2->seq = 0;
 
-    int valoresAntigos[] = {p1->seq, p2->seq};
+    int valoresAntigos[] = {m1->seq, m2->seq};
     char* chaves[] = {"1", "2"};
 
     // PODE SER FEITO COM IF
@@ -52,18 +52,18 @@ int main (int argc, char *argv[])
         }
     }
 
-    while((p1->seq == valoresAntigos[0])|(p2->seq == valoresAntigos[1]))
+    while((m1->seq == valoresAntigos[0])|(m2->seq == valoresAntigos[1]))
     {
         sleep(1);
         printf("Processo pai aguardando resultado!\n");
     }
 
-    printf("Resultados:\nm1: %d\nm2: %d\n", p1->valor, p2->valor);
+    printf("Resultados:\nm1: %d\nm2: %d\n", m1->valor, m2->valor);
 
 
     // libera a memória compartilhada do processo
-    shmdt (p1);
-    shmdt (p2);
+    shmdt (m1);
+    shmdt (m2);
 
     // libera a memória compartilhada
     shmctl (segmento1, IPC_RMID, 0);
