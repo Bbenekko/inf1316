@@ -12,7 +12,7 @@ int main (int argc, char *argv[])
 
     // aloca a memória compartilhada
     segmento = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    segmento2 = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    segmento2 = shmget (IPC_PRIVATE, sizeof (int), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
     // associa a memória compartilhada ao processo
     v = (int *) shmat (segmento, 0, 0); // comparar o retorno com -1
