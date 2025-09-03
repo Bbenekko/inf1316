@@ -1,0 +1,12 @@
+./ex3
+ filho: id do fork: 0 // pid proprio: 1233498 // pid do pai: 1233497
+ filho: id do fork: 0 // pid proprio: 1233499 // pid do pai: 1233497
+ filho: id do fork: 0 // pid proprio: 1233500 // pid do pai: 1233497
+ filho: id do fork: 0 // pid proprio: 1233501 // pid do pai: 1233497
+Processo pai -- ind da chave = -1
+Processo pai -- ind da chave = -1
+ filho: id do fork: 0 // pid proprio: 1233502 // pid do pai: 1233497
+Processo pai -- ind da chave = -1
+Pid do filho que achou a chave: 1233502
+Processo pai -- ind da chave = 17
+Processo pai -- ind da chave = 17
