@@ -6,22 +6,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct bloco 
+{
+  int valor;
+  int seq;
+} bloco;
+
 int main (int argc, char *argv[])
 {
-    int segmento1, segmento2, *p1, *p2, id, id2, pid, status;
+    int segmento1, segmento2, id, id2, pid, status;
+    __key_t chave1 = 8751;
+    __key_t chave2 = 8752;
 
     // aloca a memória compartilhada
-    segmento1 = shmget (IPC_PRIVATE, sizeof (int), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    segmento1 = shmget (chave1, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
     // associa a memória compartilhada ao processo
-    p1 = (int *) shmat (segmento1, 0, 0); // comparar o retorno com -1
-    *p1 = 0;
+    bloco* p1 = (bloco *) shmat (segmento1, 0, 0); // comparar o retorno com -1
+    p1->valor = 0;
+    p1->seq = 0;
 
-    segmento2 = shmget (IPC_PRIVATE, sizeof (int), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    p2 = (int *) shmat (segmento2, 0, 0);
-    *p2 = 0;
 
-    int* vetor[] = {p1, p2};
+    segmento2 = shmget (chave2, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    bloco* p2 = (bloco *) shmat (segmento2, 0, 0);
+    p2->valor = 0;
+    p2->seq = 0;
+
+    int valoresAntigos[] = {p1->seq, p2->seq};
+    char* chaves[] = {"1", "2"};
 
     // PODE SER FEITO COM IF
     // Porém preferi fazer com for porque fica mais clean!
@@ -30,8 +42,8 @@ int main (int argc, char *argv[])
     {
         if ((id = fork()) == 0) // proccesso filho
         {
-            printf("Executando arquivo auxiliar com filho %d de pid %d\n", i+1, pid);
-            execle("ex4aux", vetor[i], NULL, (char *)0);
+            printf("Executando arquivo auxiliar com filho %d de pid %d\n", i+1, getpid());
+            execle("ex4aux", chaves[i], NULL, (char *)0);
         }
         else if (id < 0)
         {
@@ -40,10 +52,14 @@ int main (int argc, char *argv[])
         }
     }
 
-    while(0 == 0) // processo pai
+    while((p1->seq == valoresAntigos[0])|(p2->seq == valoresAntigos[1]))
     {
-
+        sleep(1);
+        printf("Processo pai aguardando resultado!\n");
     }
+
+    printf("Resultados:\nm1: %d\nm2: %d\n", p1->valor, p2->valor);
+
 
     // libera a memória compartilhada do processo
     shmdt (p1);
