@@ -24,16 +24,22 @@ void printaMatriz(int i, int j, int* m)
 
 int main (int argc, char *argv[])
 {
-    int mv1, mv2, mv3, j, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
+    int mv1, mv2, mv3, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
 
-    int i; //i -> linha // j -> coluna
+    int i, j; //i -> linha // j -> coluna
 
-    printf("Insira a qtd de linhas: ");
+    int v1p[] = {5,7,9,6,3,6,3,1,2};
+    int v2p[] = {5,3,0,6,2,6,5,7,0};
+
+    i = 3;
+    j = 3;
+   
+/*     printf("Insira a qtd de linhas: ");
     scanf("%d", &i);
     printf("\n");
 
     printf("\nInsira a qtd de colunas: ");
-    scanf("%d", &j);
+    scanf("%d", &j); */
 
     mv1 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
     mv2 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
@@ -48,31 +54,30 @@ int main (int argc, char *argv[])
     v2r = v2;
     v3r = v3;    
 
-    printf("Insira os numeros da primeira matriz: ");
+    //printf("Insira os numeros da primeira matriz: ");
     for (int l = 0; l < i * j; l++)
     {
-        scanf("%d", v1 + l);
+        //scanf("%d", v1 + l);
+        v1[l] = v1p[l];
     }
-    printf("Insira os numeros da segunda matriz: ");
+    //printf("Insira os numeros da segunda matriz: ");
     for (int l = 0; l < i * j; l++)
     {
-        scanf("%d", v2 + l);
+        //scanf("%d", v2 + l);
+        v2[l] = v2p[l];
     }
     printf("\n");
     printaMatriz(i, j, v1r);       
     printaMatriz(i, j, v2r);    
  
     for(int l = 0; l < i; l++)
-    {  
-        printf("%p - %p - %p\n", v1, v2, v3);
+    {
         if (l != 0)
         {
             v1 += j;
             v2 += j;
             v3 += j;
         }
-
-        printf("%p - %p - %p\n", v1, v2, v3);
         id = fork();   
         if (id < 0)
         {
@@ -85,25 +90,22 @@ int main (int argc, char *argv[])
             for(int m = 0; m < j; m++)
             {
                 *v3 = *v1 + *v2;
-                printf("%d + %d = %d ---- %p - %p - %p\n", *v1, *v2, *v3, v1, v2, v3);
+                printf("%d + %d = %d \n", *v1, *v2, *v3);
                 v3++;
                 v2++;
                 v1++;
             }
-            exit(2);
-        }
-        else
-        {    
-            printf("pai: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
-
-            waitpid(id, &status, 0);
-            printf("l: %d /// i: %d\n", l, i);
- 
-            if (l == i - 1)
-                printaMatriz(i, j, v3r);   
+            printf("\n");
+            exit(0);
         }
     }
 
+    for(int l = 0; l < i; l++)
+    {    
+        wait(&status);             
+    }
+    printf("pai: pid proprio: %d \n", getpid());
+    printaMatriz(i, j, v3r);  
     // libera a memória compartilhada do processo
     shmdt (v1r);
     shmdt (v2r);
