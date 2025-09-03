@@ -189,33 +189,78 @@ e exiba a mensagem do dia para o usuário.
 -----------------------------------------------------
 ARQUIVO ex2.c
 
-#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(void)
+int main (int argc, char *argv[])
 {
-    int  pid, status;
-    int var = 1;
-    printf("Variavel: %d\n", var);
-    pid = fork();
-    if (pid!=0)
-    { //Pai
-        waitpid(-1, &status, 0);
-        printf("Pai: Variavel: %d\n", var);
+    int segmento;
+    FILE* arq;
+    char* aux;
 
-    }else 
-    { //Filho
-        var = 5;
-        printf("Filho: Variavel: %d\n", var);
+    // aloca a memória compartilhada
+    segmento = shmget (8752, 100, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
-        printf("Programa terminado!\n");
-        exit(3);
-    }
+    // associa a memória compartilhada ao processo
+    aux = (char *) shmat (segmento, 0, 0); // comparar o retorno com -1
+    
+    arq = fopen("arq_ex2.txt", "r");
+    fgets(aux, 100, arq);
+    fclose(arq);
+
+    printf("Conteudo inserido em aux:\n %s\n", aux);
+
+    shmdt(aux);
+
+    // libera a memória compartilhada do processo
+    //shmdt (aux);
+
+    // libera a memória compartilhada
+    //shmctl (segmento, IPC_RMID, 0);
+    
     return 0;
 }
+
+ARQUIVO ex2out.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main (int argc, char *argv[])
+{
+    int segmento;
+    char* aux;
+
+    // aloca a memória compartilhada
+    segmento = shmget (8752, 100, S_IRUSR | S_IWUSR);
+
+    // associa a memória compartilhada ao processo
+    aux = (char *) shmat (segmento, 0, 0); // comparar o retorno com -1
+
+    printf("Conteudo lido de aux:\n %s\n", aux);
+
+    // libera a memória compartilhada do processo
+    shmdt (aux);
+
+    // libera a memória compartilhada
+    shmctl (segmento, IPC_RMID, 0);
+    
+    return 0;
+}
+
+ARQUIVO arq_ex2.txt
+
+Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
 
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO
@@ -223,17 +268,21 @@ $gcc -Wall -o ex2 ex2.c
 $./ex2
 -----------------------------------------------------
 RESULTADO
-Variavel: 1
-Filho: Variavel: 5
-Programa terminado!
-Pai: Variavel: 1
+Conteudo inserido em aux:
+ Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex2out ex2out.c
+$./ex2out
+-----------------------------------------------------
+RESULTADO
+Conteudo lido de aux:
+ Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
 -----------------------------------------------------
 CONCLUSÃO
 
-Não houve mudança na variável do processo do pai, ocorrendo apenas na variável do processo do filho. Isso
-faz refletir que as variáveis, por mais que sejam do mesmo tipo e tenham o mesmo nome, não são realmente as
-mesmas, ou seja, processos diferentes, mesmo que pais, filhos, netos... não compartilham a mesma stack e,
-portanto, as mesmas variáveis.
+No arquivo "ex2.c" é alocado um espaço de memória compartilhada, onde é salva a mensagem dentro do arquivo "arq_ex2.txt". Após isso é usado a função shmdt() que da "detach" da memória, para que a mesma possa ser acessada por outros processos.
+Já no arquivo "ex2out.c" é alocado um espaço de memória (retirando as flags IPC_CREAT e IPC_EXCL, pois a chave já existe) já populado pelo programa anterior. Então é extraída a mensagem do espaço de memória compartilhada e a mesma (mensagem) é printada no terminal. Após isso, a memória compartilhada é liberada.
 -----------------------------------------------------
 
 Questão 3) Busca paralela em vetor
