@@ -1,0 +1,693 @@
+Bento Bruno Contarini Gonçalves  -  2311122
+Mayara Ramos Damazio - 2210833
+
+Questão 1) Soma de matrizes
+Faça um programa para somar matrizes de acordo com o seguinte algoritmo:
+O primeiro processo irá criar duas matrizes preenchidas e uma terceira vazia
+em 3 áreas de memória compartilhada.
+
+Para cada linha da matriz solução, o seu programa deverá gerar um processo para
+o seu cálculo.
+
+OBS: implemente as matrizes como vetores de tamanho (linha x coluna) e aloque
+a shared memory para os vetores correspondentes, pois acessar os elementos (i,j)
+é complexo.
+
+Filho 1  |5 7 9|   |5 3 0|    |10 10 9| 
+Filho 2  |6 3 6| + |6 2 6| =  |12 5 12| 
+Filho 3  |3 1 2|   |5 7 0|    |8  8  2| 
+-----------------------------------------------------
+ARQUIVO ex1.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MANUAL 0
+
+void printaMatriz(int i, int j, int* m)
+{
+    for (int k = 0; k < i; k++)
+    {
+        for(int l = 0; l < j; l++)
+        {
+            printf("%d ", *m);
+            m++;
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+
+int main (int argc, char *argv[])
+{
+    int mv1, mv2, mv3, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
+
+    int i, j; //i -> linha // j -> coluna 
+
+    #if MANUAL == 1  
+    printf("Insira a qtd de linhas: ");
+    scanf("%d", &i);
+    printf("\n");
+
+    printf("\nInsira a qtd de colunas: ");
+    scanf("%d", &j); 
+    #else
+    int v1p[] = {5,7,9,6,3,6,3,1,2};
+    int v2p[] = {5,3,0,6,2,6,5,7,0};
+    i = 3;
+    j = 3;
+    #endif
+
+
+    mv1 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+    mv2 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+    mv3 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+
+    // associa a memória compartilhada ao processo
+    v1 = (int *) shmat (mv1, 0, 0); // comparar o retorno com -1
+    v2 = (int *) shmat (mv2, 0, 0); // comparar o retorno com -1
+    v3 = (int *) shmat (mv3, 0, 0); // comparar o retorno com -1
+
+    v1r = v1;
+    v2r = v2;
+    v3r = v3;    
+
+    #if MANUAL == 1  
+    printf("Insira os numeros da primeira matriz: ");
+    #endif
+    for (int l = 0; l < i * j; l++)
+    {
+        #if MANUAL == 1  
+        scanf("%d", v1 + l);
+        #else
+        v1[l] = v1p[l];
+        #endif
+    }
+
+    #if MANUAL == 1  
+    printf("Insira os numeros da segunda matriz: ");
+    #endif
+    for (int l = 0; l < i * j; l++)
+    {
+        #if MANUAL == 1  
+        scanf("%d", v2 + l);
+        #else
+        v2[l] = v2p[l];
+        #endif
+    }
+    printf("\n");
+    printaMatriz(i, j, v1r);       
+    printaMatriz(i, j, v2r);    
+ 
+    for(int l = 0; l < i; l++)
+    {
+        if (l != 0)
+        {
+            v1 += j;
+            v2 += j;
+            v3 += j;
+        }
+        id = fork();   
+        if (id < 0)
+        {
+            puts ("Erro na criação do novo processo");
+            exit (-2);
+        }
+        else if (id == 0)
+        {
+            printf(" filho: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
+            for(int m = 0; m < j; m++)
+            {
+                *v3 = *v1 + *v2;
+                printf("%d + %d = %d \n", *v1, *v2, *v3);
+                v3++;
+                v2++;
+                v1++;
+            }
+            printf("\n");
+            exit(0);
+        }
+    }
+
+    for(int l = 0; l < i; l++)
+    {    
+        wait(&status);             
+    }
+    printf("pai: pid proprio: %d \n", getpid());
+    printaMatriz(i, j, v3r);  
+    // libera a memória compartilhada do processo
+    shmdt (v1r);
+    shmdt (v2r);
+    shmdt (v3r);
+
+    // libera a memória compartilhada
+    shmctl (mv1, IPC_RMID, 0);
+    shmctl (mv2, IPC_RMID, 0);
+    shmctl (mv3, IPC_RMID, 0);
+    
+    return 0;
+}
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex1 ex1.c
+$./ex1
+-----------------------------------------------------
+RESULTADO
+
+5 7 9 
+6 3 6 
+3 1 2 
+
+5 3 0 
+6 2 6 
+5 7 0 
+
+filho: id do fork: 0 // pid proprio: 1233965 // pid do pai: 1233964
+5 + 5 = 10 
+7 + 3 = 10 
+9 + 0 = 9 
+
+filho: id do fork: 0 // pid proprio: 1233966 // pid do pai: 1233964
+6 + 6 = 12 
+3 + 2 = 5 
+6 + 6 = 12 
+
+filho: id do fork: 0 // pid proprio: 1233967 // pid do pai: 1233964
+3 + 5 = 8 
+1 + 7 = 8 
+2 + 0 = 2 
+
+pai: pid proprio: 1233964 
+10 10 9 
+12 5 12 
+8 8 2 
+-----------------------------------------------------
+CONCLUSÃO
+
+No programa, foram alocadas 3 áreas na memória compartilhada do tamanho
+da quantidade de elementos da matriz. O programa foi inteiro pensado e criado
+para matrizes de qualquer tamanho de forma que se pode escolher entre o modo 
+manual ou não pelo define MANUAL em que, se for 0, ele vai usar a matriz dada
+como exemplo e, se for 1, ele vai somar as matrizes de tamanho e valores que o 
+usuário escolher. Com isso, para cada linha, é criado um novo processo que faz 
+a soma índice a índice das matrizes. Para essa soma funcionar pegando os índices 
+corretos, antes do fork o ponteiro para o vetor é acrescentado com a quantidade de
+colunas para que o próximo processo a ser criado esteja modificado e o novo processo
+possa fazer as operações nos índices corretos. Nos processos, cada um pega o conteúdo
+apontado pelos vetores, soma, guarda o resultado em um outro vetor e incrementa o vetor em 1
+para andar pelo vetor. A alteração do conteúdo apontado é feita perfeitamente, diferentemente do
+acréscimo ao vetor que só tem efeito dentro do processo que não são variáveis na memória 
+compartilhada, e sim que apenas guardam endereços dessa área. Por isso foi necessária a 
+atualização dos ponteiros antes do fork. Como houve alteração dos poteiros para os vetores, foram
+criados vetores reservas (v1r, v2r e v3r) que guardam o valor original e a liberação de memória é
+feita com eles. Como mostra a saída, cada filho fez a soma
+e no final é mostrada a matriz resultante. 
+-----------------------------------------------------
+
+Questão 2) Mensagem do Dia
+Faça um programa que:
+Leia uma mensagem do dia do stdin (ou arquivo);
+
+Crie uma memória compartilhada com a chave 8752;
+
+Salve a mensagem na memória;
+
+Faça um outro programa “cliente” que utilize a mesma chave (8752)
+e exiba a mensagem do dia para o usuário.
+-----------------------------------------------------
+ARQUIVO ex2.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main (int argc, char *argv[])
+{
+    int segmento;
+    FILE* arq;
+    char* aux;
+
+    // aloca a memória compartilhada
+    segmento = shmget (8752, 100, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+    // associa a memória compartilhada ao processo
+    aux = (char *) shmat (segmento, 0, 0); // comparar o retorno com -1
+    
+    arq = fopen("arq_ex2.txt", "r");
+    fgets(aux, 100, arq);
+    fclose(arq);
+
+    printf("Conteudo inserido em aux:\n %s\n", aux);
+
+    shmdt(aux);
+
+    // libera a memória compartilhada do processo
+    //shmdt (aux);
+
+    // libera a memória compartilhada
+    //shmctl (segmento, IPC_RMID, 0);
+    
+    return 0;
+}
+
+ARQUIVO ex2out.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main (int argc, char *argv[])
+{
+    int segmento;
+    char* aux;
+
+    // aloca a memória compartilhada
+    segmento = shmget (8752, 100, S_IRUSR | S_IWUSR);
+
+    // associa a memória compartilhada ao processo
+    aux = (char *) shmat (segmento, 0, 0); // comparar o retorno com -1
+
+    printf("Conteudo lido de aux:\n %s\n", aux);
+
+    // libera a memória compartilhada do processo
+    shmdt (aux);
+
+    // libera a memória compartilhada
+    shmctl (segmento, IPC_RMID, 0);
+    
+    return 0;
+}
+
+ARQUIVO arq_ex2.txt
+
+Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 1
+$gcc -Wall -o ex2 ex2.c
+$./ex2
+
+-----------------------------------------------------
+RESULTADO
+
+Conteudo inserido em aux:
+ Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 2
+
+$gcc -Wall -o ex2out ex2out.c
+$./ex2out
+
+-----------------------------------------------------
+RESULTADO
+
+Conteudo lido de aux:
+ Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
+
+-----------------------------------------------------
+CONCLUSÃO
+
+No arquivo "ex2.c" é alocado um espaço de memória compartilhada, 
+onde é salva a mensagem dentro do arquivo "arq_ex2.txt". Após isso é usado
+a função shmdt() que da "detach" da memória, para que a mesma possa ser 
+acessada por outros processos.
+Já no arquivo "ex2out.c" é alocado um espaço de memória (retirando as 
+flags IPC_CREAT e IPC_EXCL, pois a chave já existe) já populado pelo 
+programa anterior. Então é extraída a mensagem do espaço de memória compartilhada 
+e a mesma (mensagem) é printada no terminal. Após isso, a memória compartilhada é liberada.
+
+-----------------------------------------------------
+
+Questão 3) Busca paralela em vetor
+Faça um programa paralelo (com pelo menos 4 processos) para localizar 
+uma chave em um vetor.
+
+Crie uma memória compartilhada com dados numéricos inteiros e desordenados e a divida
+pelo número de processos;
+
+Cada processo deve procurar o dado na sua área de memória e informar a posição onde o
+dado foi localizado. 
+-----------------------------------------------------
+ARQUIVO ex3.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main (int argc, char *argv[])
+{
+    int segmento, segmento2, *v, *vr, *ind, id, status, tamVetor= 20;
+
+    // aloca a memória compartilhada
+    segmento = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    segmento2 = shmget (IPC_PRIVATE, sizeof (int), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+    // associa a memória compartilhada ao processo
+    v = (int *) shmat (segmento, 0, 0); // comparar o retorno com -1
+    ind = (int *) shmat (segmento2, 0, 0); // comparar o retorno com -1
+    *ind = -1;
+    v[0] = 9; v[1] = 1; v[2] = 15; v[3] = 18; v[4] = 3; v[5] = 13; v[6] = 4; v[7] = 19; v[8] = 20; v[9] = 2;
+    v[10] = 7; v[11] = 14; v[12] = 6; v[13] = 11; v[14] = 10; v[15] = 5; v[16] = 8; v[17] = 12; v[18] = 17; v[19] = 16;
+
+    const int qtdSegmentos = 5;
+
+    const int key = 12;
+
+    vr = v;
+
+    for(int i = 0; i < qtdSegmentos; i++)
+    {
+        if (i > 0)
+            v+=tamVetor/qtdSegmentos;
+        if ((id = fork()) < 0)
+        {
+            puts ("Erro na criação do novo processo\n");
+            exit (-2);
+        }
+        else if (id == 0)
+        {
+            printf(" filho: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
+            for(int j = 0; j < tamVetor/qtdSegmentos; j++)
+            {
+                if (*(v+j) == key)
+                {
+                    *ind = i * 4 + j;
+                    printf("Pid do filho que achou a chave: %d\n", getpid());
+                }
+
+            }
+            exit(0);
+        }
+    }
+    for (int i = 0; i < qtdSegmentos; i++)
+    {
+        wait(&status);
+        printf ("Processo pai -- ind da chave = %d\n", *ind);
+    }
+
+    // libera a memória compartilhada do processo
+    shmdt (vr);
+    shmdt (ind);
+
+    // libera a memória compartilhada
+    shmctl (segmento, IPC_RMID, 0);
+    shmctl (segmento2, IPC_RMID, 0);
+    
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex3 ex3.c
+$./ex3
+-----------------------------------------------------
+RESULTADO
+
+filho: id do fork: 0 // pid proprio: 1233498 // pid do pai: 1233497
+filho: id do fork: 0 // pid proprio: 1233499 // pid do pai: 1233497
+filho: id do fork: 0 // pid proprio: 1233500 // pid do pai: 1233497
+filho: id do fork: 0 // pid proprio: 1233501 // pid do pai: 1233497
+Processo pai -- ind da chave = -1
+Processo pai -- ind da chave = -1
+filho: id do fork: 0 // pid proprio: 1233502 // pid do pai: 1233497
+Processo pai -- ind da chave = -1
+Pid do filho que achou a chave: 1233502
+Processo pai -- ind da chave = 17
+Processo pai -- ind da chave = 17
+-----------------------------------------------------
+
+CONCLUSÃO 
+
+No programa, são criados, na memória compartilhada, o vetor que tem as chaves e o inteiro
+que deve guardar e o índice da chave que algum dos processos achará. Foi escolhido, para diminuir
+o escopo, um vetor de 20 posições. Dentre as possíveis chave, foi escolhida a chave 12 que está 
+no índice 17. Foi escolhido o uso de 5 processos, sendo assim, cada um iria procurar a chave em um
+espaço com 4 chaves ao invés de 20. Literalmente a ideia de dividir para conquistar. Antes do fork, 
+o vetor é incrementado pelo tamanho do vetor divido pela quantidade de processos utilizados, no qual
+pois assim passa para o próximo processo o endereço exato em que ele deve começar a procurar. Quando 
+o processo acha, ele muda a variável ind responsável por guardar o índice. Como houve acréscimo na
+no ponteiro inicial do vetor, foi feita uma cópia do endereço no vetor reserva vr e ele é usado na 
+liberação de memória. Pelos prints, é perceptível que ambos os processos ocorrem em tempos parecidos e 
+ao executar várias vezes, às vezes, outro processo termina primeiro do que o processo que acha chave, que
+é o que leva a saída printar alguma vez o valor -1, ao mesmo tempo que, mesmo esse índice estando na parte 
+em que o último processo procura, ele também é processado antes de outros, o que faz com que o valor já esteja
+correto após a finalização de outros processos.
+
+-----------------------------------------------------
+
+Questão 4) Multiplicação multi-processo
+Faça um programa que:
+Tenha um processo pai que abre dois blocos de memória compartilhada, m1 e m2;
+
+Cria dois processos filho (use exec), P1 e P2: estes também fazem attach em m1
+ou m2 respectivamente;
+
+Cada um dá um sleep() randômico e escreve um valor int na área compartilhada dele,
+e avisa o processo pai que um novo valor foi gerado, escrevendo tb um nr de sequencia;
+
+O pai fica em loop verificando se houve um novo valor.Apenas quando ambos P1 e P2 geraram
+um novo valor, o pai imprime o produto dos valores gerados por P1 e P2.
+-----------------------------------------------------
+ARQUIVO ex4.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct bloco 
+{
+  int valor;
+  int seq;
+} bloco;
+
+int main (int argc, char *argv[])
+{
+    int segmento1, segmento2, id, id2, pid, status;
+    __key_t chave1 = 8751;
+    __key_t chave2 = 8752;
+
+    // aloca a memória compartilhada
+    segmento1 = shmget (chave1, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+    // associa a memória compartilhada ao processo
+    bloco* m1 = (bloco *) shmat (segmento1, 0, 0); // comparar o retorno com -1
+    m1->valor = 0;
+    m1->seq = 0;
+
+
+    segmento2 = shmget (chave2, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    bloco* m2 = (bloco *) shmat (segmento2, 0, 0);
+    m2->valor = 0;
+    m2->seq = 0;
+
+    int valoresAntigos[] = {m1->seq, m2->seq};
+    char* chaves[] = {"1", "2"};
+
+    // PODE SER FEITO COM IF
+    // Porém preferi fazer com for porque fica mais clean!
+    printf("pid do pai = %d\n", getpid());
+    for (int i = 0; i < 2; i++)
+    {
+        if ((id = fork()) == 0) // proccesso filho
+        {
+            printf("Executando arquivo auxiliar com filho %d de pid %d\n", i+1, getpid());
+            execle("ex4aux", chaves[i], NULL, (char *)0);
+        }
+        else if (id < 0)
+        {
+            puts ("Erro na criação do novo processo");
+            exit (-2);
+        }
+    }
+
+    while((m1->seq == valoresAntigos[0])|(m2->seq == valoresAntigos[1]))
+    {
+        sleep(1);
+        printf("Processo pai aguardando resultado!\n");
+    }
+
+    printf("Resultados:\nm1: %d\nm2: %d\n", m1->valor, m2->valor);
+
+
+    // libera a memória compartilhada do processo
+    shmdt (m1);
+    shmdt (m2);
+
+    // libera a memória compartilhada
+    shmctl (segmento1, IPC_RMID, 0);
+    shmctl (segmento2, IPC_RMID, 0);
+    
+    return 0;
+}
+
+-----------------------------------------------------
+
+ARQUIVO ex4aux.c
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+typedef struct bloco 
+{
+  int valor;
+  int seq;
+} bloco;
+
+int main(int argc, char *argv[])
+{
+    int segmento;
+    __key_t chave1 = 8751;
+    __key_t chave2 = 8752;
+
+    // adicionando randomização "verdadeira"
+    time_t t;
+    srand((unsigned) time(&t));
+
+    if(strcmp(argv[0], "1"))
+    {
+        segmento = shmget (chave1, sizeof (bloco), S_IRUSR | S_IWUSR);
+        bloco* p = (bloco *) shmat (segmento, 0, 0);
+
+        sleep(rand() % 10 + 2);
+        p->valor = rand() % 100 + 1;
+
+        p->seq++;
+
+        shmdt (p);
+
+        printf("Processo de m1 finalizado!\n");
+    }
+    else if (strcmp(argv[0], "2"))
+    {
+        segmento = shmget (chave2, sizeof (bloco), S_IRUSR | S_IWUSR);
+        bloco* p = (bloco *) shmat (segmento, 0, 0);
+
+        int aux = rand();
+        srand(aux); // mudando a seed de random, já que ambos processos são realizados ao mesmo tempo, então sempre tem o mesmo resultado
+        sleep(rand() % 10 + 2);
+        p->valor = rand() % 100 + 1;
+
+        p->seq++;
+
+        shmdt (p);
+        printf("Processo de m2 finalizado!\n");
+    }
+    else
+    {
+        puts ("Erro ao adquirir a chave");
+        exit (-2);
+    }
+
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO INSTANCIA 1
+$gcc -Wall -o ex4 ex4.c
+$gcc -Wall -o ex4aux ex4aux.c
+$./ex4
+
+-----------------------------------------------------
+RESULTADO
+
+pid do pai = 7410
+Executando arquivo auxiliar com filho 1 de pid 7411
+Executando arquivo auxiliar com filho 2 de pid 7412
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo de m1 finalizado!
+Processo de m2 finalizado!
+Processo pai aguardando resultado!
+Resultados:
+m1: 33
+m2: 22
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO INSTANCIA 2
+$gcc -Wall -o ex4 ex4.c
+$gcc -Wall -o ex4aux ex4aux.c
+$./ex4
+
+-----------------------------------------------------
+RESULTADO
+
+pid do pai = 10273
+Executando arquivo auxiliar com filho 1 de pid 10274
+Executando arquivo auxiliar com filho 2 de pid 10275
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo de m1 finalizado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo pai aguardando resultado!
+Processo de m2 finalizado!
+Processo pai aguardando resultado!
+Resultados:
+m1: 5
+m2: 100
+
+-----------------------------------------------------
+CONCLUSÃO
+
+No programa "ex4.c" foi criado o struct bloco, que contém um valor e um 
+número sequencial (ambos inteiros). Então foi alocado dois blocos 
+de memória compartilhada m1 e m2, que cada um é do tamanho de um struct bloco. 
+Após isso, é realizado um loop que cria dois processos filhos, nos 
+quais os mesmos executam o programa "ex4aux.c", com o argumento 
+"1" ou "2", dependendo de qual filho seja. Após isso há 
+um while (do processo pai) que verifica se ambos os números 
+sequencias de m1 e m2 foram alterados, e enquanto não forem printa 
+no terminal "processo pai aguardando!", com intervalos (através de um sleep) 
+de 1 segundo. Após ambos sequenciais serem alterados, é printado no terminal 
+os valores de m1 e m2 (alterados pelo arquivo "ex4aux.c). Ao fim, 
+é liberada toda memória dos blocos.
+
+No programa "ex4aux.c", também foi criado o struct bloco. Após isso, 
+é pego o tempo, e utiliza-se o mesmo como uma seed para a função
+random, deixando a próxima de uma função randômica "verdadeira".
+Após isso, há um if que verifica se o argumento foi "1" ou "2": 
+Caso "1", há um sleep de 2 a 11 segundos, e então é colocado um inteiro 
+aleatório (de 1 a 100) dentro do valor do bloco dentro de m1, 
+e é incrementado 1 no sequencial do bloco m1. 
+O mesmo ocorre no caso "2", porém no mesmo a seed do random é alterada 
+pelo próprio random, pois caso ambos processos sejam realizados ao mesmo 
+tempo, haverão valores iguais nos blocos m1 e m2. Após isso ambos os 
+casos printam que foram finalizados e o programa retorna 0.
