@@ -1,0 +1,4 @@
+COMANDOS:
+ps --- mostra os processos
+kill -s [SINAL] [PID DO PROCESSO] --- realiza sinal no processo
+./arquivo & --- roda em segundo plano
