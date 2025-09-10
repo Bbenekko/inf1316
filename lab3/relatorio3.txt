@@ -1,213 +1,79 @@
 Bento Bruno Contarini Gonçalves  -  2311122
 Mayara Ramos Damazio - 2210833
 
-Questão 1) Soma de matrizes
-Faça um programa para somar matrizes de acordo com o seguinte algoritmo:
-O primeiro processo irá criar duas matrizes preenchidas e uma terceira vazia
-em 3 áreas de memória compartilhada.
+Questão 1) Execute o programa “ctrl-c.c”.
+Digite Ctrl-C e Ctrl-\. Analise o resultado.
 
-Para cada linha da matriz solução, o seu programa deverá gerar um processo para
-o seu cálculo.
-
-OBS: implemente as matrizes como vetores de tamanho (linha x coluna) e aloque
-a shared memory para os vetores correspondentes, pois acessar os elementos (i,j)
-é complexo.
-
-Filho 1  |5 7 9|   |5 3 0|    |10 10 9| 
-Filho 2  |6 3 6| + |6 2 6| =  |12 5 12| 
-Filho 3  |3 1 2|   |5 7 0|    |8  8  2| 
+Neste mesmo programa, remova os
+comandos signal( ) e repita o teste anterior
+observando os resultados.
 -----------------------------------------------------
 ARQUIVO ex1.c
 
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
 
-#define MANUAL 0
+#define EVER ;;
+void intHandler(int sinal);
+void quitHandler(int sinal);
 
-void printaMatriz(int i, int j, int* m)
+int main (void)
 {
-    for (int k = 0; k < i; k++)
-    {
-        for(int l = 0; l < j; l++)
-        {
-            printf("%d ", *m);
-            m++;
-        }
-        printf("\n");
-    }
-    printf("\n");
+void (*p)(int); // ponteiro para função que recebe int como
+    // parâmetro
+    p = signal(SIGINT, intHandler);
+    printf("Endereco do manipulador anterior %p\n", p);
+    p = signal(SIGQUIT, quitHandler);
+    printf("Endereco do manipulador anterior %p\n", p);
+    puts ("Ctrl-C desabilitado. Use Ctrl-\\ para terminar");
+    for(EVER);
+}
+void intHandler(int sinal)
+{
+    printf("Você pressionou Ctrl-C (%d) \n", sinal);
+}
+void quitHandler(int sinal)
+{
+    printf("Terminando o processo...\n");
+    exit (0);
 }
 
-
-int main (int argc, char *argv[])
-{
-    int mv1, mv2, mv3, *v1r, *v2r, *v3r, *v1, *v2, *v3, id, status;
-
-    int i, j; //i -> linha // j -> coluna 
-
-    #if MANUAL == 1  
-    printf("Insira a qtd de linhas: ");
-    scanf("%d", &i);
-    printf("\n");
-
-    printf("\nInsira a qtd de colunas: ");
-    scanf("%d", &j); 
-    #else
-    int v1p[] = {5,7,9,6,3,6,3,1,2};
-    int v2p[] = {5,3,0,6,2,6,5,7,0};
-    i = 3;
-    j = 3;
-    #endif
-
-
-    mv1 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
-    mv2 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
-    mv3 = shmget (IPC_PRIVATE, sizeof (int) * i * j, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
-
-    // associa a memória compartilhada ao processo
-    v1 = (int *) shmat (mv1, 0, 0); // comparar o retorno com -1
-    v2 = (int *) shmat (mv2, 0, 0); // comparar o retorno com -1
-    v3 = (int *) shmat (mv3, 0, 0); // comparar o retorno com -1
-
-    v1r = v1;
-    v2r = v2;
-    v3r = v3;    
-
-    #if MANUAL == 1  
-    printf("Insira os numeros da primeira matriz: ");
-    #endif
-    for (int l = 0; l < i * j; l++)
-    {
-        #if MANUAL == 1  
-        scanf("%d", v1 + l);
-        #else
-        v1[l] = v1p[l];
-        #endif
-    }
-
-    #if MANUAL == 1  
-    printf("Insira os numeros da segunda matriz: ");
-    #endif
-    for (int l = 0; l < i * j; l++)
-    {
-        #if MANUAL == 1  
-        scanf("%d", v2 + l);
-        #else
-        v2[l] = v2p[l];
-        #endif
-    }
-    printf("\n");
-    printaMatriz(i, j, v1r);       
-    printaMatriz(i, j, v2r);    
- 
-    for(int l = 0; l < i; l++)
-    {
-        if (l != 0)
-        {
-            v1 += j;
-            v2 += j;
-            v3 += j;
-        }
-        id = fork();   
-        if (id < 0)
-        {
-            puts ("Erro na criação do novo processo");
-            exit (-2);
-        }
-        else if (id == 0)
-        {
-            printf(" filho: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
-            for(int m = 0; m < j; m++)
-            {
-                *v3 = *v1 + *v2;
-                printf("%d + %d = %d \n", *v1, *v2, *v3);
-                v3++;
-                v2++;
-                v1++;
-            }
-            printf("\n");
-            exit(0);
-        }
-    }
-
-    for(int l = 0; l < i; l++)
-    {    
-        wait(&status);             
-    }
-    printf("pai: pid proprio: %d \n", getpid());
-    printaMatriz(i, j, v3r);  
-    // libera a memória compartilhada do processo
-    shmdt (v1r);
-    shmdt (v2r);
-    shmdt (v3r);
-
-    // libera a memória compartilhada
-    shmctl (mv1, IPC_RMID, 0);
-    shmctl (mv2, IPC_RMID, 0);
-    shmctl (mv3, IPC_RMID, 0);
-    
-    return 0;
-}
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o ex1 ex1.c
-$./ex1
+$gcc -Wall -o ctrl-c ctrl-c.c
+$./ctrl-c
 -----------------------------------------------------
-RESULTADO
+RESULTADO 1
 
-5 7 9 
-6 3 6 
-3 1 2 
+Endereco do manipulador anterior (nil)
+Endereco do manipulador anterior (nil)
+Ctrl-C desabilitado. Use Ctrl-\ para terminar
+^CVocê pressionou Ctrl-C (2) 
+^CVocê pressionou Ctrl-C (2) 
+^CVocê pressionou Ctrl-C (2) 
+^\Terminando o processo...
 
-5 3 0 
-6 2 6 
-5 7 0 
+RESULTADO 2
 
-filho: id do fork: 0 // pid proprio: 1233965 // pid do pai: 1233964
-5 + 5 = 10 
-7 + 3 = 10 
-9 + 0 = 9 
+Endereco do manipulador anterior (nil)
+Endereco do manipulador anterior (nil)
+Ctrl-C desabilitado. Use Ctrl-\ para terminar
+^C
 
-filho: id do fork: 0 // pid proprio: 1233966 // pid do pai: 1233964
-6 + 6 = 12 
-3 + 2 = 5 
-6 + 6 = 12 
-
-filho: id do fork: 0 // pid proprio: 1233967 // pid do pai: 1233964
-3 + 5 = 8 
-1 + 7 = 8 
-2 + 0 = 2 
-
-pai: pid proprio: 1233964 
-10 10 9 
-12 5 12 
-8 8 2 
 -----------------------------------------------------
 CONCLUSÃO
 
-No programa, foram alocadas 3 áreas na memória compartilhada do tamanho
-da quantidade de elementos da matriz. O programa foi inteiro pensado e criado
-para matrizes de qualquer tamanho de forma que se pode escolher entre o modo 
-manual ou não pelo define MANUAL em que, se for 0, ele vai usar a matriz dada
-como exemplo e, se for 1, ele vai somar as matrizes de tamanho e valores que o 
-usuário escolher. Com isso, para cada linha, é criado um novo processo que faz 
-a soma índice a índice das matrizes. Para essa soma funcionar pegando os índices 
-corretos, antes do fork o ponteiro para o vetor é acrescentado com a quantidade de
-colunas para que o próximo processo a ser criado esteja modificado e o novo processo
-possa fazer as operações nos índices corretos. Nos processos, cada um pega o conteúdo
-apontado pelos vetores, soma, guarda o resultado em um outro vetor e incrementa o vetor em 1
-para andar pelo vetor. A alteração do conteúdo apontado é feita perfeitamente, diferentemente do
-acréscimo ao vetor que só tem efeito dentro do processo que não são variáveis na memória 
-compartilhada, e sim que apenas guardam endereços dessa área. Por isso foi necessária a 
-atualização dos ponteiros antes do fork. Como houve alteração dos poteiros para os vetores, foram
-criados vetores reservas (v1r, v2r e v3r) que guardam o valor original e a liberação de memória é
-feita com eles. Como mostra a saída, cada filho fez a soma
-e no final é mostrada a matriz resultante. 
+No programa original, a função signal foi utilizada duas vezes, de modo que na primeira vez ela captura
+o sinal SIGINT que é recebido quando se escrever ctrl-c na shell enquanto roda um programa para interrompê-lo 
+e na segunda vez ele captura o sinal SIGQUIT que também interrompre o programa, mas ele gera um core dump. 
+Na captura do ctrl-c, ele passa a chamar a função intHandler que printa uma mensagem e na com ctrl-\, ela
+printa uma mensagem e dá um exit no programa. Com isso, ao tratar o sinal de ctrl-c, ele já não afeta mais o 
+programa, ou seja, ao usar ctrl-c no terminal, o programa já não é mais terminado, mas printa a mensagem da
+função intHandler já que ela foi cadastrada como a reação, o que deve ser feito quando esse sinal é recebido. 
+Ao usar ctrl-\, o programa é terminado, mas não da forma que normalmente aconteceria: a função quitHandler é 
+acionada, o que faz com que, ao terminar o programa com um exit(0), não há criação de um core dump.
+
 -----------------------------------------------------
 
 Questão 2) Mensagem do Dia
