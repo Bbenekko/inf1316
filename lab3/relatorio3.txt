@@ -343,114 +343,116 @@ pelo número de processos;
 Cada processo deve procurar o dado na sua área de memória e informar a posição onde o
 dado foi localizado. 
 -----------------------------------------------------
-ARQUIVO ex3.c
+ARQUIVO filhocidio.c
 
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <stdio.h>
-#include <stdlib.h>
 
+void childhandler(int signo);
+int delay;
 int main (int argc, char *argv[])
 {
-    int segmento, segmento2, *v, *vr, *ind, id, status, tamVetor= 20;
-
-    // aloca a memória compartilhada
-    segmento = shmget (IPC_PRIVATE, sizeof (int) * tamVetor, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    segmento2 = shmget (IPC_PRIVATE, sizeof (int), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-
-    // associa a memória compartilhada ao processo
-    v = (int *) shmat (segmento, 0, 0); // comparar o retorno com -1
-    ind = (int *) shmat (segmento2, 0, 0); // comparar o retorno com -1
-    *ind = -1;
-    v[0] = 9; v[1] = 1; v[2] = 15; v[3] = 18; v[4] = 3; v[5] = 13; v[6] = 4; v[7] = 19; v[8] = 20; v[9] = 2;
-    v[10] = 7; v[11] = 14; v[12] = 6; v[13] = 11; v[14] = 10; v[15] = 5; v[16] = 8; v[17] = 12; v[18] = 17; v[19] = 16;
-
-    const int qtdSegmentos = 5;
-
-    const int key = 12;
-
-    vr = v;
-
-    for(int i = 0; i < qtdSegmentos; i++)
+    pid_t pid;
+    signal(SIGCHLD, childhandler);
+    if ((pid = fork()) < 0)
     {
-        if (i > 0)
-            v+=tamVetor/qtdSegmentos;
-        if ((id = fork()) < 0)
-        {
-            puts ("Erro na criação do novo processo\n");
-            exit (-2);
-        }
-        else if (id == 0)
-        {
-            printf(" filho: id do fork: %d // pid proprio: %d // pid do pai: %d\n", id, getpid(), getppid());
-            for(int j = 0; j < tamVetor/qtdSegmentos; j++)
-            {
-                if (*(v+j) == key)
-                {
-                    *ind = i * 4 + j;
-                    printf("Pid do filho que achou a chave: %d\n", getpid());
-                }
-
-            }
-            exit(0);
-        }
+        fprintf(stderr, "Erro ao criar filho\n");
+        exit(-1);
     }
-    for (int i = 0; i < qtdSegmentos; i++)
+    if (pid == 0) /* child */
+        execve(argv[2], 0, 0); /* ou sleep(3);*/
+    else /* parent */
     {
-        wait(&status);
-        printf ("Processo pai -- ind da chave = %d\n", *ind);
+        sscanf(argv[1], "%d", &delay); /* read delay from command line */
+        sleep(delay);
+        printf("Program %s exceeded limit of %d seconds!\n", argv[2], delay);
+        kill(pid, SIGKILL);
+        sleep(1); /* necessary for SIGCHLD to arrive */
     }
-
-    // libera a memória compartilhada do processo
-    shmdt (vr);
-    shmdt (ind);
-
-    // libera a memória compartilhada
-    shmctl (segmento, IPC_RMID, 0);
-    shmctl (segmento2, IPC_RMID, 0);
-    
     return 0;
 }
 
+void childhandler(int signo) /* Executed if child dies before parent */
+{
+    int status;
+    pid_t pid = wait(&status);
+    printf("Child %d terminated within %d seconds com estado %d.\n", pid, delay, status);
+    exit(0);
+}
+
+
+ARQUIVO sleep5.c
+
+#include <stdio.h>
+#include <unistd.h>
+int main (void)
+{
+    fprintf(stdout, "indo dormir...\n");
+    sleep(5);
+    printf(stdout, "Acordei!\n");
+    return 0;
+}
+
+
+ARQUIVO sleep15.c
+
+#include <stdio.h>
+#include <unistd.h>
+int main (void)
+{
+    fprintf(stdout, "indo dormir...\n");
+    sleep(5);
+    printf(stdout, "Acordei!\n");
+    return 0;
+}
 -----------------------------------------------------
+
 COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o ex3 ex3.c
-$./ex3
+$gcc -Wall -o sleep5 sleep5.c
+$gcc -Wall -o sleep15 sleep15.c
+$gcc -Wall -o filhocidio filhocidio.c
+$./filhocidio 10 ./sleep5
+$./filhocidio 10 ./sleep15
 -----------------------------------------------------
+
 RESULTADO
 
-filho: id do fork: 0 // pid proprio: 1233498 // pid do pai: 1233497
-filho: id do fork: 0 // pid proprio: 1233499 // pid do pai: 1233497
-filho: id do fork: 0 // pid proprio: 1233500 // pid do pai: 1233497
-filho: id do fork: 0 // pid proprio: 1233501 // pid do pai: 1233497
-Processo pai -- ind da chave = -1
-Processo pai -- ind da chave = -1
-filho: id do fork: 0 // pid proprio: 1233502 // pid do pai: 1233497
-Processo pai -- ind da chave = -1
-Pid do filho que achou a chave: 1233502
-Processo pai -- ind da chave = 17
-Processo pai -- ind da chave = 17
+indo dormir...
+Acordei!
+Child 8296 terminated within 10 seconds com estado 0.
+
+----
+
+indo dormir...
+Program ./sleep15 exceeded limit of 10 seconds!
+Child 8360 terminated within 10 seconds com estado 9.
 -----------------------------------------------------
 
 CONCLUSÃO 
 
-No programa, são criados, na memória compartilhada, o vetor que tem as chaves e o inteiro
-que deve guardar e o índice da chave que algum dos processos achará. Foi escolhido, para diminuir
-o escopo, um vetor de 20 posições. Dentre as possíveis chave, foi escolhida a chave 12 que está 
-no índice 17. Foi escolhido o uso de 5 processos, sendo assim, cada um iria procurar a chave em um
-espaço com 4 chaves ao invés de 20. Literalmente a ideia de dividir para conquistar. Antes do fork, 
-o vetor é incrementado pelo tamanho do vetor divido pela quantidade de processos utilizados, no qual
-pois assim passa para o próximo processo o endereço exato em que ele deve começar a procurar. Quando 
-o processo acha, ele muda a variável ind responsável por guardar o índice. Como houve acréscimo na
-no ponteiro inicial do vetor, foi feita uma cópia do endereço no vetor reserva vr e ele é usado na 
-liberação de memória. Pelos prints, é perceptível que ambos os processos ocorrem em tempos parecidos e 
-ao executar várias vezes, às vezes, outro processo termina primeiro do que o processo que acha chave, que
-é o que leva a saída printar alguma vez o valor -1, ao mesmo tempo que, mesmo esse índice estando na parte 
-em que o último processo procura, ele também é processado antes de outros, o que faz com que o valor já esteja
-correto após a finalização de outros processos.
+Tanto os programas sleep5 e sleep 15 funcionam de forma semelhante: Assim que começam a rodar, 
+printam uma mensagem, são pausados por uma determinada quantidade de segundos e printam mais  uma mensagem. 
+
+O filhocidio inicia utilizando a função signal que cadastra uma reação ao recebimento do sinal do tipo SIGCHLD
+que é emitido quando há a pausa, continuidade ou a morte de um filho antes do pai. A reação criada foi a função
+childhandler que é chamada quando há o recebimento desse sinal. Nela, o pai recebe o status do processo pelo wait
+e printa as informações do processo fiho. 
+
+Voltando ao código, é criado um filho no fork. Foram usados 2 programas filhos: sleep5 e sleep 15 em que cada um
+printa uma mensagem, "dorme" por 5 e 15 segundos respectivamente e depois printam outra mensagem.  
+
+Enquanto o filho roda, o pai "dorme" por uma quantidade de segundos determinada por um parâmetro passado pela linha
+de comando. Se o programa filho, que até então estava rodando em paralelo, não morrer antes que a "soneca" do pai
+termine, ele printa a quantidade de tempo até então e mata o filho com o comando kill, e depois "dorme" novamente
+apenas para que o sinal da morte do filho chegue e a função childhandler seja acionada, sendo que nesse print, o 
+status do filho foi que ele terminou com código 9. Se o filho terminar antes do fim da "soneca" do pai, os dois prints
+do filho são mostrados na tela e a childhandler é acionada, mostrando que o filho terminou com código 0 e o pai é encerrado.
 
 -----------------------------------------------------
 
@@ -464,6 +466,8 @@ ou m2 respectivamente;
 Cada um dá um sleep() randômico e escreve um valor int na área compartilhada dele,
 e avisa o processo pai que um novo valor foi gerado, escrevendo tb um nr de sequencia;
 
+O pai fica em loop verificando se houve um novo valor.Apenas quando ambos P1 e P2 geraram
+um novo valor, o pai imprime o produto 
 O pai fica em loop verificando se houve um novo valor.Apenas quando ambos P1 e P2 geraram
 um novo valor, o pai imprime o produto dos valores gerados por P1 e P2.
 -----------------------------------------------------
