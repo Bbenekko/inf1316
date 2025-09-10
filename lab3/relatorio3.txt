@@ -79,126 +79,55 @@ ctrl-c interrompendo e o ctrl-\ criando o core dump.
 
 -----------------------------------------------------
 
-Questão 2) Mensagem do Dia
-Faça um programa que:
-Leia uma mensagem do dia do stdin (ou arquivo);
-
-Crie uma memória compartilhada com a chave 8752;
-
-Salve a mensagem na memória;
-
-Faça um outro programa “cliente” que utilize a mesma chave (8752)
-e exiba a mensagem do dia para o usuário.
+Questão 2) 
+Tente fazer um programa para interceptar o
+sinal SIGKILL. Você conseguiu? Explique.
 -----------------------------------------------------
 ARQUIVO ex2.c
 
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
 
-int main (int argc, char *argv[])
+#define EVER ;;
+
+void intHandler(int sinal);
+void quitHandler(int sinal);
+
+int main (void)
 {
-    int segmento;
-    FILE* arq;
-    char* aux;
-
-    // aloca a memória compartilhada
-    segmento = shmget (8752, 100, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-
-    // associa a memória compartilhada ao processo
-    aux = (char *) shmat (segmento, 0, 0); // comparar o retorno com -1
-    
-    arq = fopen("arq_ex2.txt", "r");
-    fgets(aux, 100, arq);
-    fclose(arq);
-
-    printf("Conteudo inserido em aux:\n %s\n", aux);
-
-    shmdt(aux);
-
-    // libera a memória compartilhada do processo
-    //shmdt (aux);
-
-    // libera a memória compartilhada
-    //shmctl (segmento, IPC_RMID, 0);
-    
-    return 0;
+    void (*p)(int); // ponteiro para função que recebe int como
+    // parâmetro
+    p = signal(SIGKILL, intHandler);
+    printf("Programa rodando!\n");
+    for(EVER);
 }
 
-ARQUIVO ex2out.c
-
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-int main (int argc, char *argv[])
+void intHandler(int sinal)
 {
-    int segmento;
-    char* aux;
-
-    // aloca a memória compartilhada
-    segmento = shmget (8752, 100, S_IRUSR | S_IWUSR);
-
-    // associa a memória compartilhada ao processo
-    aux = (char *) shmat (segmento, 0, 0); // comparar o retorno com -1
-
-    printf("Conteudo lido de aux:\n %s\n", aux);
-
-    // libera a memória compartilhada do processo
-    shmdt (aux);
-
-    // libera a memória compartilhada
-    shmctl (segmento, IPC_RMID, 0);
-    
-    return 0;
+    printf("Você tentou dar SIGKILL!");
 }
-
-ARQUIVO arq_ex2.txt
-
-Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
 
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO PARTE 1
 $gcc -Wall -o ex2 ex2.c
-$./ex2
+$./ex2 &
 
 -----------------------------------------------------
 RESULTADO
 
-Conteudo inserido em aux:
- Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
+Programa rodando!
+$ps 
+$kill -s 9 8422
+[1]+    Killed             ./ex2
 
 -----------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO PARTE 2
 
-$gcc -Wall -o ex2out ex2out.c
-$./ex2out
-
------------------------------------------------------
-RESULTADO
-
-Conteudo lido de aux:
- Mensagem do dia: "O ignorante afirma, o sábio duvida, o sensato reflete." - Aristoteles
-
------------------------------------------------------
 CONCLUSÃO
 
-No arquivo "ex2.c" é alocado um espaço de memória compartilhada, 
-onde é salva a mensagem dentro do arquivo "arq_ex2.txt". Após isso é usado
-a função shmdt() que da "detach" da memória, para que a mesma possa ser 
-acessada por outros processos.
-Já no arquivo "ex2out.c" é alocado um espaço de memória (retirando as 
-flags IPC_CREAT e IPC_EXCL, pois a chave já existe) já populado pelo 
-programa anterior. Então é extraída a mensagem do espaço de memória compartilhada 
-e a mesma (mensagem) é printada no terminal. Após isso, a memória compartilhada é liberada.
+Não foi possível interceptar o sinal SIGKILL, mesmo que no código houvesse a função signal()
+com um inthandler, para alterar o sinal para um sinal "inofensivo". Foi explicado em aula
+que o sinal kill não pode ser interceptado.
 
 -----------------------------------------------------
 
@@ -325,242 +254,116 @@ do filho são mostrados na tela e a childhandler é acionada, mostrando que o fi
 
 -----------------------------------------------------
 
-Questão 4) Multiplicação multi-processo
-Faça um programa que:
-Tenha um processo pai que abre dois blocos de memória compartilhada, m1 e m2;
-
-Cria dois processos filho (use exec), P1 e P2: estes também fazem attach em m1
-ou m2 respectivamente;
-
-Cada um dá um sleep() randômico e escreve um valor int na área compartilhada dele,
-e avisa o processo pai que um novo valor foi gerado, escrevendo tb um nr de sequencia;
-
-O pai fica em loop verificando se houve um novo valor.Apenas quando ambos P1 e P2 geraram
-um novo valor, o pai imprime o produto 
-O pai fica em loop verificando se houve um novo valor.Apenas quando ambos P1 e P2 geraram
-um novo valor, o pai imprime o produto dos valores gerados por P1 e P2.
+Questão 4) Usando SIGSTOP e SIGCONT faça um
+programa que crie 2 processos filho e alterne a
+execução dos filhos. Após 10 trocas de
+contexto, o processo pai mata os processos
+filho.
+OBS: Os processos filho são formados por loops
+infinitos.
 -----------------------------------------------------
 ARQUIVO ex4.c
 
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-typedef struct bloco 
+#define EVER ;;
+
+int main()
 {
-  int valor;
-  int seq;
-} bloco;
+    int pid1, pid2;
 
-int main (int argc, char *argv[])
-{
-    int segmento1, segmento2, id, id2, pid, status;
-    __key_t chave1 = 8751;
-    __key_t chave2 = 8752;
+    printf("pid do pai = %d\n", getpid());  
+    if((pid1 = fork()) == 0) // filho 1
+    {
+        for(EVER)
+        {
+            printf("Filho 1 executando!\n");
+            sleep(1);
+        }
+    }
 
-    // aloca a memória compartilhada
-    segmento1 = shmget (chave1, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-
-    // associa a memória compartilhada ao processo
-    bloco* m1 = (bloco *) shmat (segmento1, 0, 0); // comparar o retorno com -1
-    m1->valor = 0;
-    m1->seq = 0;
-
-
-    segmento2 = shmget (chave2, sizeof (bloco), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-    bloco* m2 = (bloco *) shmat (segmento2, 0, 0);
-    m2->valor = 0;
-    m2->seq = 0;
-
-    int valoresAntigos[] = {m1->seq, m2->seq};
-    char* chaves[] = {"1", "2"};
-
-    // PODE SER FEITO COM IF
-    // Porém preferi fazer com for porque fica mais clean!
     printf("pid do pai = %d\n", getpid());
-    for (int i = 0; i < 2; i++)
+    if((pid2 = fork()) == 0) // filho 2
     {
-        if ((id = fork()) == 0) // proccesso filho
+        for(EVER)
         {
-            printf("Executando arquivo auxiliar com filho %d de pid %d\n", i+1, getpid());
-            execle("ex4aux", chaves[i], NULL, (char *)0);
-        }
-        else if (id < 0)
-        {
-            puts ("Erro na criação do novo processo");
-            exit (-2);
+            printf("Filho 2 executando!\n");
+            sleep(1);
         }
     }
 
-    while((m1->seq == valoresAntigos[0])|(m2->seq == valoresAntigos[1]))
+    for (int i = 1; i < 11; i++)
     {
-        sleep(1);
-        printf("Processo pai aguardando resultado!\n");
+        if(i%2) // se i for impar 
+        {
+            kill(pid1, SIGSTOP);
+            kill(pid2, SIGCONT);
+        }
+        else // se i for par
+        {
+            kill(pid2, SIGSTOP);
+            kill(pid1, SIGCONT);
+        }
+        sleep(2);
     }
 
-    printf("Resultados:\nm1: %d\nm2: %d\n", m1->valor, m2->valor);
+    printf("Terminou!");
+    kill(pid1, SIGKILL);
+    kill(pid2, SIGKILL);
 
-
-    // libera a memória compartilhada do processo
-    shmdt (m1);
-    shmdt (m2);
-
-    // libera a memória compartilhada
-    shmctl (segmento1, IPC_RMID, 0);
-    shmctl (segmento2, IPC_RMID, 0);
-    
-    return 0;
-}
-
------------------------------------------------------
-
-ARQUIVO ex4aux.c
-
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-typedef struct bloco 
-{
-  int valor;
-  int seq;
-} bloco;
-
-int main(int argc, char *argv[])
-{
-    int segmento;
-    __key_t chave1 = 8751;
-    __key_t chave2 = 8752;
-
-    // adicionando randomização "verdadeira"
-    time_t t;
-    srand((unsigned) time(&t));
-
-    if(strcmp(argv[0], "1"))
-    {
-        segmento = shmget (chave1, sizeof (bloco), S_IRUSR | S_IWUSR);
-        bloco* p = (bloco *) shmat (segmento, 0, 0);
-
-        sleep(rand() % 10 + 2);
-        p->valor = rand() % 100 + 1;
-
-        p->seq++;
-
-        shmdt (p);
-
-        printf("Processo de m1 finalizado!\n");
-    }
-    else if (strcmp(argv[0], "2"))
-    {
-        segmento = shmget (chave2, sizeof (bloco), S_IRUSR | S_IWUSR);
-        bloco* p = (bloco *) shmat (segmento, 0, 0);
-
-        int aux = rand();
-        srand(aux); // mudando a seed de random, já que ambos processos são realizados ao mesmo tempo, então sempre tem o mesmo resultado
-        sleep(rand() % 10 + 2);
-        p->valor = rand() % 100 + 1;
-
-        p->seq++;
-
-        shmdt (p);
-        printf("Processo de m2 finalizado!\n");
-    }
-    else
-    {
-        puts ("Erro ao adquirir a chave");
-        exit (-2);
-    }
 
     return 0;
 }
 
 -----------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO INSTANCIA 1
+COMPILAÇÃO E EXECUÇÃO
 $gcc -Wall -o ex4 ex4.c
-$gcc -Wall -o ex4aux ex4aux.c
 $./ex4
 
 -----------------------------------------------------
 RESULTADO
 
-pid do pai = 7410
-Executando arquivo auxiliar com filho 1 de pid 7411
-Executando arquivo auxiliar com filho 2 de pid 7412
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo de m1 finalizado!
-Processo de m2 finalizado!
-Processo pai aguardando resultado!
-Resultados:
-m1: 33
-m2: 22
-
------------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO INSTANCIA 2
-$gcc -Wall -o ex4 ex4.c
-$gcc -Wall -o ex4aux ex4aux.c
-$./ex4
-
------------------------------------------------------
-RESULTADO
-
-pid do pai = 10273
-Executando arquivo auxiliar com filho 1 de pid 10274
-Executando arquivo auxiliar com filho 2 de pid 10275
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo de m1 finalizado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo pai aguardando resultado!
-Processo de m2 finalizado!
-Processo pai aguardando resultado!
-Resultados:
-m1: 5
-m2: 100
+pid do pai = 8622
+pid do pai = 8622
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Terminou!
 
 -----------------------------------------------------
 CONCLUSÃO
 
-No programa "ex4.c" foi criado o struct bloco, que contém um valor e um 
-número sequencial (ambos inteiros). Então foi alocado dois blocos 
-de memória compartilhada m1 e m2, que cada um é do tamanho de um struct bloco. 
-Após isso, é realizado um loop que cria dois processos filhos, nos 
-quais os mesmos executam o programa "ex4aux.c", com o argumento 
-"1" ou "2", dependendo de qual filho seja. Após isso há 
-um while (do processo pai) que verifica se ambos os números 
-sequencias de m1 e m2 foram alterados, e enquanto não forem printa 
-no terminal "processo pai aguardando!", com intervalos (através de um sleep) 
-de 1 segundo. Após ambos sequenciais serem alterados, é printado no terminal 
-os valores de m1 e m2 (alterados pelo arquivo "ex4aux.c). Ao fim, 
-é liberada toda memória dos blocos.
-
-No programa "ex4aux.c", também foi criado o struct bloco. Após isso, 
-é pego o tempo, e utiliza-se o mesmo como uma seed para a função
-random, deixando a próxima de uma função randômica "verdadeira".
-Após isso, há um if que verifica se o argumento foi "1" ou "2": 
-Caso "1", há um sleep de 2 a 11 segundos, e então é colocado um inteiro 
-aleatório (de 1 a 100) dentro do valor do bloco dentro de m1, 
-e é incrementado 1 no sequencial do bloco m1. 
-O mesmo ocorre no caso "2", porém no mesmo a seed do random é alterada 
-pelo próprio random, pois caso ambos processos sejam realizados ao mesmo 
-tempo, haverão valores iguais nos blocos m1 e m2. Após isso ambos os 
-casos printam que foram finalizados e o programa retorna 0.
+Para realizar a tarefa, foram realizados dois forks (com variáveis pid1 e pid2, para o primeiro
+e segundo filho respectivamente), nos quais os mesmos estão em um loop infinito, que apenas printa
+que está em execução, e pausa (sleep) por um segundo. 
+No processo pai, há um loop de um for, que caso seja impar para o filho 1 e continua o filho 2,
+e caso seja par faz o contrário. Ambos são realizados com os sinais SIGSTOP e SIGCONT. 
+APós isso há um sleep de 2 segundos Como é possível observar, no output as vezes há mais ou menos 
+prints por filho, isso se dá por uma falta de sincronia entre o sleep do pai e o sleep dos processos 
+filhos. No final do programa, os processos filhos são finalizados com SIGKILL.
