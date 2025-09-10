@@ -74,6 +74,9 @@ função intHandler já que ela foi cadastrada como a reação, o que deve ser f
 Ao usar ctrl-\, o programa é terminado, mas não da forma que normalmente aconteceria: a função quitHandler é 
 acionada, o que faz com que, ao terminar o programa com um exit(0), não há criação de um core dump.
 
+Quando se remove os comandos signal(), tanto o ctrl-c, quanto o ctrl-\ encerram o programa do jeito padrão: o 
+ctrl-c interrompendo e o ctrl-\ criando o core dump.
+
 -----------------------------------------------------
 
 Questão 2) Mensagem do Dia
