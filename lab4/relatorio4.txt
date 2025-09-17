@@ -200,113 +200,287 @@ primeiro processo e de 2 segundos para os
 demais processos. Execute os programas e relate
 o que aconteceu
 -----------------------------------------------------
-ARQUIVO filhocidio.c
+ARQUIVO ex7.c
 
-#include <stdio.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
+#include  "stdio.h"
+#include "stdlib.h"
+#include "signal.h"
 #include <unistd.h>
-#include <sys/wait.h>
 
-void childhandler(int signo);
-int delay;
-int main (int argc, char *argv[])
+int main(void)
 {
-    pid_t pid;
-    signal(SIGCHLD, childhandler);
-    if ((pid = fork()) < 0)
+    char*vExecs []= {"aux1", "aux2", "aux3"};
+    int vPids[3];
+    for (int i = 0; i < 3; i++)
     {
-        fprintf(stderr, "Erro ao criar filho\n");
-        exit(-1);
+        vPids[i] = fork();
+        if ( vPids[i] == 0)
+        {
+            printf("Estou no filho %d", i);
+            execle(vExecs[i], vExecs[i], NULL, (char *)0);
+        }
     }
-    if (pid == 0) /* child */
-        execve(argv[2], 0, 0); /* ou sleep(3);*/
-    else /* parent */
+
+    kill(vPids[0], SIGSTOP);
+    kill(vPids[1], SIGSTOP);
+    kill(vPids[2], SIGSTOP);
+
+    while(1)
     {
-        sscanf(argv[1], "%d", &delay); /* read delay from command line */
-        sleep(delay);
-        printf("Program %s exceeded limit of %d seconds!\n", argv[2], delay);
-        kill(pid, SIGKILL);
-        sleep(1); /* necessary for SIGCHLD to arrive */
+        printf(" \n\n\nvai comecar o filho 1:\n\n\n");
+        kill(vPids[0], SIGCONT);
+        sleep(1);
+        kill(vPids[0], SIGSTOP);
+
+        printf(" \n\n\nvai comecar o filho 2:\n\n\n");
+        kill(vPids[1], SIGCONT);
+        sleep(2);
+        kill(vPids[1], SIGSTOP);
+
+        printf(" \n\n\nvai comecar o filho 3:\n\n\n");
+        kill(vPids[2], SIGCONT);
+        sleep(2);
+        kill(vPids[2], SIGSTOP);
     }
     return 0;
 }
 
-void childhandler(int signo) /* Executed if child dies before parent */
-{
-    int status;
-    pid_t pid = wait(&status);
-    printf("Child %d terminated within %d seconds com estado %d.\n", pid, delay, status);
-    exit(0);
-}
 
-
-ARQUIVO sleep5.c
+ARQUIVO aux1.c
 
 #include <stdio.h>
 #include <unistd.h>
-int main (void)
+
+int main(void)
 {
-    fprintf(stdout, "indo dormir...\n");
-    sleep(5);
-    printf(stdout, "Acordei!\n");
-    return 0;
+    while(1)
+    {
+        printf("Filho 1 aqui ");
+        usleep(10000);
+    }        
 }
 
-
-ARQUIVO sleep15.c
+ARQUIVO aux2.c
 
 #include <stdio.h>
 #include <unistd.h>
-int main (void)
+
+int main(void)
 {
-    fprintf(stdout, "indo dormir...\n");
-    sleep(5);
-    printf(stdout, "Acordei!\n");
-    return 0;
+    while(1)
+    {
+        printf("Filho 2 aqui ");
+        usleep(10000);
+    }        
+}
+
+ARQUIVO aux3.c
+
+#include <stdio.h>
+#include <unistd.h>
+
+int main(void)
+{
+    while(1)
+    {
+        printf("Filho 3 aqui ");
+        usleep(10000);
+    }        
 }
 -----------------------------------------------------
 
 COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o sleep5 sleep5.c
-$gcc -Wall -o sleep15 sleep15.c
-$gcc -Wall -o filhocidio filhocidio.c
-$./filhocidio 10 ./sleep5
-$./filhocidio 10 ./sleep15
+$gcc -Wall -o aux3 aux3.c
+$gcc -Wall -o aux2 aux2.c
+$gcc -Wall -o aux1 aux1.c
+$gcc -Wall -o ex7 ex7.c
+$./ex7
+
 -----------------------------------------------------
 
 RESULTADO
 
-indo dormir...
-Acordei!
-Child 8296 terminated within 10 seconds com estado 0.
 
-----
+vai comecar o filho 1:
 
-indo dormir...
-Program ./sleep15 exceeded limit of 10 seconds!
-Child 8360 terminated within 10 seconds com estado 9.
+
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aq 
+
+
+vai comecar o filho 2:
+
+
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 
+
+
+vai comecar o filho 3:
+
+
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui 
+Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+
+
+vai comecar o filho 1:
+
+
+ui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui Filho 1 aqui 
+Filho 1 aqui Filho 1 
+
+vai comecar o filho 2:
+
+
+aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui 
+Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqui Filho 2 aqu 
+
+
+vai comecar o filho 3:
+
+
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 
+aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqui Filho 3 aqu
+
 -----------------------------------------------------
 
 CONCLUSÃO 
 
-Tanto os programas sleep5 e sleep 15 funcionam de forma semelhante: Assim que começam a rodar, 
-printam uma mensagem, são pausados por uma determinada quantidade de segundos e printam mais  uma mensagem. 
-
-O filhocidio inicia utilizando a função signal que cadastra uma reação ao recebimento do sinal do tipo SIGCHLD
-que é emitido quando há a pausa, continuidade ou a morte de um filho antes do pai. A reação criada foi a função
-childhandler que é chamada quando há o recebimento desse sinal. Nela, o pai recebe o status do processo pelo wait
-e printa as informações do processo fiho. 
-
-Voltando ao código, é criado um filho no fork. Foram usados 2 programas filhos: sleep5 e sleep 15 em que cada um
-printa uma mensagem, "dorme" por 5 e 15 segundos respectivamente e depois printam outra mensagem.  
-
-Enquanto o filho roda, o pai "dorme" por uma quantidade de segundos determinada por um parâmetro passado pela linha
-de comando. Se o programa filho, que até então estava rodando em paralelo, não morrer antes que a "soneca" do pai
-termine, ele printa a quantidade de tempo até então e mata o filho com o comando kill, e depois "dorme" novamente
-apenas para que o sinal da morte do filho chegue e a função childhandler seja acionada, sendo que nesse print, o 
-status do filho foi que ele terminou com código 9. Se o filho terminar antes do fim da "soneca" do pai, os dois prints
-do filho são mostrados na tela e a childhandler é acionada, mostrando que o filho terminou com código 0 e o pai é encerrado.
+Ambos os arquivos aux tem um loop infinito, um print que dizem qual filho ele é e um usleep
+que faz com que o programa "durma" por 0,01s para diminuir a quantidade de mensagens na tela
+a fim de poder colocar o resultado aqui no relatório. O arquivo ex7 cria 3 processos filhos 
+em que, com o execl, passam a rodar o código  dos auxiliares. Com isso, ambos são pausados e
+depois começa um loop infinito no pai. É utilizado a função kill para que o primeiro processo
+continue. Enquanto o processo filho roda, o programa dorme por 1 segundo, que foi a quantidade
+de determinada pelo enunciado e, após continuar, o processo pai manda um sinal para que o filho
+novamente. Desde mesmo modo para os outros filhos, o pai manda sinais para que o filho continue
+espera a quantidade pré-determinada de tempo e depois manda outro sinal de parada. O programa
+para de executar o ctrl-c. É interessante perceber que, por ser uma pausa, quando um processo 
+filho volta a executar, ele continua exatamente de onde parou e é possível perceber isso pois
+às vezes o processo é pausado no meio do print de uma palavra e, quando ele retorna, ele 
+continua a printar exatamente a partir exatamente de onde parou.
