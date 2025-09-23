@@ -1,0 +1,369 @@
+Bento Bruno Contarini Gonçalves  -  2311122
+Mayara Ramos Damazio - 2210833
+
+Questão 1) Execute o programa “ctrl-c.c”.
+Digite Ctrl-C e Ctrl-\. Analise o resultado.
+
+Neste mesmo programa, remova os
+comandos signal( ) e repita o teste anterior
+observando os resultados.
+-----------------------------------------------------
+ARQUIVO ex1.c
+
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+
+#define EVER ;;
+void intHandler(int sinal);
+void quitHandler(int sinal);
+
+int main (void)
+{
+void (*p)(int); // ponteiro para função que recebe int como
+    // parâmetro
+    p = signal(SIGINT, intHandler);
+    printf("Endereco do manipulador anterior %p\n", p);
+    p = signal(SIGQUIT, quitHandler);
+    printf("Endereco do manipulador anterior %p\n", p);
+    puts ("Ctrl-C desabilitado. Use Ctrl-\\ para terminar");
+    for(EVER);
+}
+void intHandler(int sinal)
+{
+    printf("Você pressionou Ctrl-C (%d) \n", sinal);
+}
+void quitHandler(int sinal)
+{
+    printf("Terminando o processo...\n");
+    exit (0);
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ctrl-c ctrl-c.c
+$./ctrl-c
+-----------------------------------------------------
+RESULTADO 1
+
+Endereco do manipulador anterior (nil)
+Endereco do manipulador anterior (nil)
+Ctrl-C desabilitado. Use Ctrl-\ para terminar
+^CVocê pressionou Ctrl-C (2) 
+^CVocê pressionou Ctrl-C (2) 
+^CVocê pressionou Ctrl-C (2) 
+^\Terminando o processo...
+
+RESULTADO 2
+
+Endereco do manipulador anterior (nil)
+Endereco do manipulador anterior (nil)
+Ctrl-C desabilitado. Use Ctrl-\ para terminar
+^C
+
+-----------------------------------------------------
+CONCLUSÃO
+
+No programa original, a função signal foi utilizada duas vezes, de modo que na primeira vez ela captura
+o sinal SIGINT que é recebido quando se escrever ctrl-c na shell enquanto roda um programa para interrompê-lo 
+e na segunda vez ele captura o sinal SIGQUIT que também interrompre o programa, mas ele gera um core dump. 
+Na captura do ctrl-c, ele passa a chamar a função intHandler que printa uma mensagem e na com ctrl-\, ela
+printa uma mensagem e dá um exit no programa. Com isso, ao tratar o sinal de ctrl-c, ele já não afeta mais o 
+programa, ou seja, ao usar ctrl-c no terminal, o programa já não é mais terminado, mas printa a mensagem da
+função intHandler já que ela foi cadastrada como a reação, o que deve ser feito quando esse sinal é recebido. 
+Ao usar ctrl-\, o programa é terminado, mas não da forma que normalmente aconteceria: a função quitHandler é 
+acionada, o que faz com que, ao terminar o programa com um exit(0), não há criação de um core dump.
+
+Quando se remove os comandos signal(), tanto o ctrl-c, quanto o ctrl-\ encerram o programa do jeito padrão: o 
+ctrl-c interrompendo e o ctrl-\ criando o core dump.
+
+-----------------------------------------------------
+
+Questão 2) 
+Tente fazer um programa para interceptar o
+sinal SIGKILL. Você conseguiu? Explique.
+-----------------------------------------------------
+ARQUIVO ex2.c
+
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+
+#define EVER ;;
+
+void intHandler(int sinal);
+void quitHandler(int sinal);
+
+int main (void)
+{
+    void (*p)(int); // ponteiro para função que recebe int como
+    // parâmetro
+    p = signal(SIGKILL, intHandler);
+    printf("Programa rodando!\n");
+    for(EVER);
+}
+
+void intHandler(int sinal)
+{
+    printf("Você tentou dar SIGKILL!");
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 1
+$gcc -Wall -o ex2 ex2.c
+$./ex2 &
+
+-----------------------------------------------------
+RESULTADO
+
+Programa rodando!
+$ps 
+$kill -s 9 8422
+[1]+    Killed             ./ex2
+
+-----------------------------------------------------
+
+CONCLUSÃO
+
+Não foi possível interceptar o sinal SIGKILL, mesmo que no código houvesse a função signal()
+com um inthandler, para alterar o sinal para um sinal "inofensivo". Foi explicado em aula
+que o sinal kill não pode ser interceptado.
+
+-----------------------------------------------------
+
+Questão 3) Busca paralela em vetor
+Faça um programa paralelo (com pelo menos 4 processos) para localizar 
+uma chave em um vetor.
+
+Crie uma memória compartilhada com dados numéricos inteiros e desordenados e a divida
+pelo número de processos;
+
+Cada processo deve procurar o dado na sua área de memória e informar a posição onde o
+dado foi localizado. 
+-----------------------------------------------------
+ARQUIVO filhocidio.c
+
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+void childhandler(int signo);
+int delay;
+int main (int argc, char *argv[])
+{
+    pid_t pid;
+    signal(SIGCHLD, childhandler);
+    if ((pid = fork()) < 0)
+    {
+        fprintf(stderr, "Erro ao criar filho\n");
+        exit(-1);
+    }
+    if (pid == 0) /* child */
+        execve(argv[2], 0, 0); /* ou sleep(3);*/
+    else /* parent */
+    {
+        sscanf(argv[1], "%d", &delay); /* read delay from command line */
+        sleep(delay);
+        printf("Program %s exceeded limit of %d seconds!\n", argv[2], delay);
+        kill(pid, SIGKILL);
+        sleep(1); /* necessary for SIGCHLD to arrive */
+    }
+    return 0;
+}
+
+void childhandler(int signo) /* Executed if child dies before parent */
+{
+    int status;
+    pid_t pid = wait(&status);
+    printf("Child %d terminated within %d seconds com estado %d.\n", pid, delay, status);
+    exit(0);
+}
+
+
+ARQUIVO sleep5.c
+
+#include <stdio.h>
+#include <unistd.h>
+int main (void)
+{
+    fprintf(stdout, "indo dormir...\n");
+    sleep(5);
+    printf(stdout, "Acordei!\n");
+    return 0;
+}
+
+
+ARQUIVO sleep15.c
+
+#include <stdio.h>
+#include <unistd.h>
+int main (void)
+{
+    fprintf(stdout, "indo dormir...\n");
+    sleep(5);
+    printf(stdout, "Acordei!\n");
+    return 0;
+}
+-----------------------------------------------------
+
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o sleep5 sleep5.c
+$gcc -Wall -o sleep15 sleep15.c
+$gcc -Wall -o filhocidio filhocidio.c
+$./filhocidio 10 ./sleep5
+$./filhocidio 10 ./sleep15
+-----------------------------------------------------
+
+RESULTADO
+
+indo dormir...
+Acordei!
+Child 8296 terminated within 10 seconds com estado 0.
+
+----
+
+indo dormir...
+Program ./sleep15 exceeded limit of 10 seconds!
+Child 8360 terminated within 10 seconds com estado 9.
+-----------------------------------------------------
+
+CONCLUSÃO 
+
+Tanto os programas sleep5 e sleep 15 funcionam de forma semelhante: Assim que começam a rodar, 
+printam uma mensagem, são pausados por uma determinada quantidade de segundos e printam mais  uma mensagem. 
+
+O filhocidio inicia utilizando a função signal que cadastra uma reação ao recebimento do sinal do tipo SIGCHLD
+que é emitido quando há a pausa, continuidade ou a morte de um filho antes do pai. A reação criada foi a função
+childhandler que é chamada quando há o recebimento desse sinal. Nela, o pai recebe o status do processo pelo wait
+e printa as informações do processo fiho. 
+
+Voltando ao código, é criado um filho no fork. Foram usados 2 programas filhos: sleep5 e sleep 15 em que cada um
+printa uma mensagem, "dorme" por 5 e 15 segundos respectivamente e depois printam outra mensagem.  
+
+Enquanto o filho roda, o pai "dorme" por uma quantidade de segundos determinada por um parâmetro passado pela linha
+de comando. Se o programa filho, que até então estava rodando em paralelo, não morrer antes que a "soneca" do pai
+termine, ele printa a quantidade de tempo até então e mata o filho com o comando kill, e depois "dorme" novamente
+apenas para que o sinal da morte do filho chegue e a função childhandler seja acionada, sendo que nesse print, o 
+status do filho foi que ele terminou com código 9. Se o filho terminar antes do fim da "soneca" do pai, os dois prints
+do filho são mostrados na tela e a childhandler é acionada, mostrando que o filho terminou com código 0 e o pai é encerrado.
+
+-----------------------------------------------------
+
+Questão 4) Usando SIGSTOP e SIGCONT faça um
+programa que crie 2 processos filho e alterne a
+execução dos filhos. Após 10 trocas de
+contexto, o processo pai mata os processos
+filho.
+OBS: Os processos filho são formados por loops
+infinitos.
+-----------------------------------------------------
+ARQUIVO ex4.c
+
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define EVER ;;
+
+int main()
+{
+    int pid1, pid2;
+
+    printf("pid do pai = %d\n", getpid());  
+    if((pid1 = fork()) == 0) // filho 1
+    {
+        for(EVER)
+        {
+            printf("Filho 1 executando!\n");
+            sleep(1);
+        }
+    }
+
+    printf("pid do pai = %d\n", getpid());
+    if((pid2 = fork()) == 0) // filho 2
+    {
+        for(EVER)
+        {
+            printf("Filho 2 executando!\n");
+            sleep(1);
+        }
+    }
+
+    for (int i = 1; i < 11; i++)
+    {
+        if(i%2) // se i for impar 
+        {
+            kill(pid1, SIGSTOP);
+            kill(pid2, SIGCONT);
+        }
+        else // se i for par
+        {
+            kill(pid2, SIGSTOP);
+            kill(pid1, SIGCONT);
+        }
+        sleep(2);
+    }
+
+    printf("Terminou!");
+    kill(pid1, SIGKILL);
+    kill(pid2, SIGKILL);
+
+
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex4 ex4.c
+$./ex4
+
+-----------------------------------------------------
+RESULTADO
+
+pid do pai = 8622
+pid do pai = 8622
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Filho 2 executando!
+Filho 2 executando!
+Filho 1 executando!
+Filho 1 executando!
+Terminou!
+
+-----------------------------------------------------
+CONCLUSÃO
+
+Para realizar a tarefa, foram realizados dois forks (com variáveis pid1 e pid2, para o primeiro
+e segundo filho respectivamente), nos quais os mesmos estão em um loop infinito, que apenas printa
+que está em execução, e pausa (sleep) por um segundo. 
+No processo pai, há um loop de um for, que caso seja impar para o filho 1 e continua o filho 2,
+e caso seja par faz o contrário. Ambos são realizados com os sinais SIGSTOP e SIGCONT. 
+APós isso há um sleep de 2 segundos Como é possível observar, no output as vezes há mais ou menos 
+prints por filho, isso se dá por uma falta de sincronia entre o sleep do pai e o sleep dos processos 
+filhos. No final do programa, os processos filhos são finalizados com SIGKILL.
