@@ -79,55 +79,69 @@ ctrl-c interrompendo e o ctrl-\ criando o core dump.
 
 -----------------------------------------------------
 
-Questão 2) 
-Tente fazer um programa para interceptar o
-sinal SIGKILL. Você conseguiu? Explique.
+Questão 2) Faça um programa para redirecionar a entrada e
+a saída, lendo os dados de um arquivo e gerando
+a saída em outro.
 -----------------------------------------------------
 ARQUIVO ex2.c
 
 #include <stdio.h>
-#include <signal.h>
+#include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-#define EVER ;;
-
-void intHandler(int sinal);
-void quitHandler(int sinal);
-
-int main (void)
+int main ()
 {
-    void (*p)(int); // ponteiro para função que recebe int como
-    // parâmetro
-    p = signal(SIGKILL, intHandler);
-    printf("Programa rodando!\n");
-    for(EVER);
+    int fdIn, fdOut;
+    int retorno; /* valor de retorno de dup */
+    int retorno2; 
+
+    if ((fdIn=open("arquivoEnt.txt", O_RDONLY,0666)) == -1)
+    {
+        perror("Error open()");
+        return -1;
+    }
+    close(0);
+    dup(fdIn);
+
+    if ((fdOut=open("arquivoSaida.txt", O_RDWR|O_CREAT|O_TRUNC,0666)) == -1)
+    {
+        perror("Error open()");
+        return -1;
+    }
+    close(1);
+    dup(fdOut);
+
+    char conteudo[1000];
+    fgets(conteudo, sizeof conteudo, stdin);
+    printf("Conteudo do arquivoEnt: %s", conteudo);
+    
+    return 0;
 }
 
-void intHandler(int sinal)
-{
-    printf("Você tentou dar SIGKILL!");
-}
+----------------------------------------------------
+ARQUIVO arquivoEnt.txt
+Mensagem muito legal!
 
 -----------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO PARTE 1
+COMPILAÇÃO E EXECUÇÃO
 $gcc -Wall -o ex2 ex2.c
 $./ex2 &
 
 -----------------------------------------------------
 RESULTADO
 
-Programa rodando!
-$ps 
-$kill -s 9 8422
-[1]+    Killed             ./ex2
+(Dentro de arquivoSaida.txt):
+Conteudo do arquivoEnt: Mensagem muito legal!
 
 -----------------------------------------------------
 
 CONCLUSÃO
 
-Não foi possível interceptar o sinal SIGKILL, mesmo que no código houvesse a função signal()
-com um inthandler, para alterar o sinal para um sinal "inofensivo". Foi explicado em aula
-que o sinal kill não pode ser interceptado.
+No código foram fechadas a entrada e saída padrão, e foram abertas no lugar a fdIn e fdOut, 
+que direcionam a entrada padrão para o arquivoEnt.txt e a saída padrão arquivoSaida.txt.
+Logo com fgets é possível ler o arquivoEnt e com printf é possível escrever no arquivoSaida.
 
 -----------------------------------------------------
 
@@ -254,71 +268,65 @@ do filho são mostrados na tela e a childhandler é acionada, mostrando que o fi
 
 -----------------------------------------------------
 
-Questão 4) Usando SIGSTOP e SIGCONT faça um
-programa que crie 2 processos filho e alterne a
-execução dos filhos. Após 10 trocas de
-contexto, o processo pai mata os processos
-filho.
-OBS: Os processos filho são formados por loops
-infinitos.
+Questão 4) Faça um programa que cria dois processos
+leitores e um processo escritor em uma mesma
+pipe. Faça o escritor dormir metade do tempo
+dos leitores, e mostre como os leitores
+consomem os dados produzidos pelo escritor.
+Obs: não force uma alternância controlada por
+SIGSTOP/SIGCONT.
 -----------------------------------------------------
 ARQUIVO ex4.c
 
 #include <stdio.h>
-#include <signal.h>
+#include <string.h>
 #include <stdlib.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 
-#define EVER ;;
-
-int main()
+int main (int argc, char *argv[])
 {
-    int pid1, pid2;
+    int nDadosTx, nDadosRx; // quantidade de dados transmitidos/recebidos
+    int fd[2]; // descritor dos pipes
+    const char textoTX[] = "mensagem";
+    char textoRX[sizeof textoTX];
+    int pid1, pid2, status;
 
-    printf("pid do pai = %d\n", getpid());  
-    if((pid1 = fork()) == 0) // filho 1
+    if (pipe(fd) < 0)
     {
-        for(EVER)
-        {
-            printf("Filho 1 executando!\n");
-            sleep(1);
-        }
+        puts ("Erro ao abrir os pipes");
+        exit (-1);
     }
 
-    printf("pid do pai = %d\n", getpid());
-    if((pid2 = fork()) == 0) // filho 2
+    if((pid1 = fork()) == 0) // filho 1 (leitor)
     {
-        for(EVER)
-        {
-            printf("Filho 2 executando!\n");
-            sleep(1);
-        }
+        sleep(4);
+        close(fd[1]);
+        nDadosRx = read(fd[0], textoRX, sizeof textoRX);
+        printf("Leitura de %d dados pelo filho 1.\nConteúdo: %s\n", nDadosRx, textoRX);
+        close(fd[0]);
+        exit(3);
+    }
+    if ((pid2 = fork()) == 0) // filho 2 (leitor)
+    {
+        sleep(4);
+        close(fd[1]);
+        nDadosRx = read(fd[0], textoRX, sizeof textoRX);
+        printf("Leitura de %d dados pelo filho 2.\nConteúdo: %s\n", nDadosRx, textoRX);
+        close(fd[0]);
+        exit(3);
     }
 
-    for (int i = 1; i < 11; i++)
-    {
-        if(i%2) // se i for impar 
-        {
-            kill(pid1, SIGSTOP);
-            kill(pid2, SIGCONT);
-        }
-        else // se i for par
-        {
-            kill(pid2, SIGSTOP);
-            kill(pid1, SIGCONT);
-        }
-        sleep(2);
-    }
+    sleep(2);
+    close(fd[0]);
+    nDadosTx = write(fd[1], textoTX, strlen(textoTX) + 1);
+    close(fd[1]);
+    printf("%d dados escritos pelo pai!\n", nDadosTx);
 
-    printf("Terminou!");
-    kill(pid1, SIGKILL);
-    kill(pid2, SIGKILL);
+    waitpid(-1, &status, 0);
 
-
+    
     return 0;
 }
 
@@ -328,42 +336,26 @@ $gcc -Wall -o ex4 ex4.c
 $./ex4
 
 -----------------------------------------------------
-RESULTADO
+RESULTADO 1 (sleep 1 no pai e sleep 2 nos filhos)
 
-pid do pai = 8622
-pid do pai = 8622
-Filho 1 executando!
-Filho 2 executando!
-Filho 2 executando!
-Filho 2 executando!
-Filho 1 executando!
-Filho 1 executando!
-Filho 2 executando!
-Filho 2 executando!
-Filho 1 executando!
-Filho 1 executando!
-Filho 2 executando!
-Filho 2 executando!
-Filho 1 executando!
-Filho 1 executando!
-Filho 2 executando!
-Filho 2 executando!
-Filho 1 executando!
-Filho 1 executando!
-Filho 2 executando!
-Filho 2 executando!
-Filho 1 executando!
-Filho 1 executando!
-Terminou!
+9 dados escritos pelo pai!
+Leitura de 0 dados pelo filho 1.
+Leitura de 9 dados pelo filho 2.
+Conteúdo: 
+Conteúdo: mensagem
+
+------------------------------------------------------
+RESULTADO 2 (sleep 2 no pai e sleep 4 nos filhos)
+
+9 dados escritos pelo pai!
+Leitura de 9 dados pelo filho 1.
+Conteúdo: mensagem
+Leitura de 0 dados pelo filho 2.
+Conteúdo: 
 
 -----------------------------------------------------
 CONCLUSÃO
 
-Para realizar a tarefa, foram realizados dois forks (com variáveis pid1 e pid2, para o primeiro
-e segundo filho respectivamente), nos quais os mesmos estão em um loop infinito, que apenas printa
-que está em execução, e pausa (sleep) por um segundo. 
-No processo pai, há um loop de um for, que caso seja impar para o filho 1 e continua o filho 2,
-e caso seja par faz o contrário. Ambos são realizados com os sinais SIGSTOP e SIGCONT. 
-APós isso há um sleep de 2 segundos Como é possível observar, no output as vezes há mais ou menos 
-prints por filho, isso se dá por uma falta de sincronia entre o sleep do pai e o sleep dos processos 
-filhos. No final do programa, os processos filhos são finalizados com SIGKILL.
+A partir do resultado, é possível concluir que após a leitura da pipe,
+não é possível reler o que já foi lido, pois o dado é removido da
+pipe pelo processo que o leu.
