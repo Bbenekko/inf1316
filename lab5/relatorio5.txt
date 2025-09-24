@@ -1,81 +1,90 @@
 Bento Bruno Contarini Gonçalves  -  2311122
 Mayara Ramos Damazio - 2210833
 
-Questão 1) Execute o programa “ctrl-c.c”.
-Digite Ctrl-C e Ctrl-\. Analise o resultado.
-
-Neste mesmo programa, remova os
-comandos signal( ) e repita o teste anterior
-observando os resultados.
+Questão 1) Faça um programa para criar dois processos que se comunicam via pipe. 
+O Pai lê do pipe enquanto o filho escreve no pipe. Exiba o resultado do que foi 
+escrito e lido.
 -----------------------------------------------------
 ARQUIVO ex1.c
 
 #include <stdio.h>
-#include <signal.h>
+#include <string.h>
 #include <stdlib.h>
+#include <unistd.h> 
 
-#define EVER ;;
-void intHandler(int sinal);
-void quitHandler(int sinal);
+#define TAM_VETOR 100   
 
-int main (void)
+int main(void)
 {
-void (*p)(int); // ponteiro para função que recebe int como
-    // parâmetro
-    p = signal(SIGINT, intHandler);
-    printf("Endereco do manipulador anterior %p\n", p);
-    p = signal(SIGQUIT, quitHandler);
-    printf("Endereco do manipulador anterior %p\n", p);
-    puts ("Ctrl-C desabilitado. Use Ctrl-\\ para terminar");
-    for(EVER);
-}
-void intHandler(int sinal)
-{
-    printf("Você pressionou Ctrl-C (%d) \n", sinal);
-}
-void quitHandler(int sinal)
-{
-    printf("Terminando o processo...\n");
-    exit (0);
-}
+    int fd[2]; /* descritor a ser duplicado */
+    int qtdLidos = 0;
+    int qtdEnviados = 0;
+    int id;
+
+    if (pipe(fd) < 0)
+    {
+        puts ("Erro ao abrir os pipes");
+        exit (-1);
+    }
+
+    id = fork();
+    if(id == 0) //filho
+    {
+        close(fd[0]); //tem que fechar leitura
+        char frase[TAM_VETOR] = "Ola pai! Aqui e o seu filho. Meu pid e ";
+        char idStr [10];
+        sprintf(idStr, "%d", getpid());
+        strcat(frase, idStr);
+        qtdEnviados = write(fd[1], frase, strlen(frase) + 1);
+        printf("%d dados enviados\n", qtdEnviados);
+        close(fd[1]);
+    }
+    else if (id > 0)
+    {
+        close(fd[1]); //tem que fechar escrita
+        char frase[TAM_VETOR];
+
+        qtdLidos = read(fd[0], frase, TAM_VETOR);
+        printf("%d dados lidos: %s\n", qtdLidos, frase);
+        printf("\nAqui e o pai e o pid do filho era %d\n", id);
+        close(fd[0]);
+    }
+    else
+    {
+        puts ("Erro na criação do novo processo\n");
+        exit (-2);
+    }
+
+    
+    return 0;
+}  
 
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o ctrl-c ctrl-c.c
-$./ctrl-c
+$gcc -Wall -o ex1 ex1.c
+$./ex1
 -----------------------------------------------------
-RESULTADO 1
+RESULTADO
 
-Endereco do manipulador anterior (nil)
-Endereco do manipulador anterior (nil)
-Ctrl-C desabilitado. Use Ctrl-\ para terminar
-^CVocê pressionou Ctrl-C (2) 
-^CVocê pressionou Ctrl-C (2) 
-^CVocê pressionou Ctrl-C (2) 
-^\Terminando o processo...
+47 dados enviados
+47 dados lidos: Ola pai! Aqui e o seu filho. Meu pid e 1346261
 
-RESULTADO 2
-
-Endereco do manipulador anterior (nil)
-Endereco do manipulador anterior (nil)
-Ctrl-C desabilitado. Use Ctrl-\ para terminar
-^C
+Aqui e o pai e o pid do filho era 1346261
 
 -----------------------------------------------------
 CONCLUSÃO
 
-No programa original, a função signal foi utilizada duas vezes, de modo que na primeira vez ela captura
-o sinal SIGINT que é recebido quando se escrever ctrl-c na shell enquanto roda um programa para interrompê-lo 
-e na segunda vez ele captura o sinal SIGQUIT que também interrompre o programa, mas ele gera um core dump. 
-Na captura do ctrl-c, ele passa a chamar a função intHandler que printa uma mensagem e na com ctrl-\, ela
-printa uma mensagem e dá um exit no programa. Com isso, ao tratar o sinal de ctrl-c, ele já não afeta mais o 
-programa, ou seja, ao usar ctrl-c no terminal, o programa já não é mais terminado, mas printa a mensagem da
-função intHandler já que ela foi cadastrada como a reação, o que deve ser feito quando esse sinal é recebido. 
-Ao usar ctrl-\, o programa é terminado, mas não da forma que normalmente aconteceria: a função quitHandler é 
-acionada, o que faz com que, ao terminar o programa com um exit(0), não há criação de um core dump.
-
-Quando se remove os comandos signal(), tanto o ctrl-c, quanto o ctrl-\ encerram o programa do jeito padrão: o 
-ctrl-c interrompendo e o ctrl-\ criando o core dump.
+No programa pai, é criado um vetor de duas posições fd e nele são guardados os descritores 
+de leitura e escrita respectivamente. Após isso, é feito o fork e um processo filho é criado. 
+Na parte que apenas o processo filho roda, é fechada a comunicação de leitura com a função 
+close e é enviado um dado, nesse caso uma string com tamanho de 47, pelo comando write pela
+comunicação de pipe na segunda posição do vetor fd. No pai, é fechada a comunicação de saída
+e é usado o comando read para ler o dado presente na pipe e colocar em alguma variável, um 
+vetor de string no caso específico e depois a string foi printada. Foi necessário se atentar
+à quantidade de bytes que se quer escrever ou ler nos comandos read ou write. Também se 
+observa que, no write, foi usado o strlen(str) + 1 para dizer o quanto de bytes da capacidade
+total da string que deveria ser enviada e, no read, por mais que ele pudesse ler até 100,
+o read leu exatamente a quantidade de bytes que a string passada tem.
 
 -----------------------------------------------------
 
