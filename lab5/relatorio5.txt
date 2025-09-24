@@ -140,126 +140,84 @@ que o sinal kill não pode ser interceptado.
 
 -----------------------------------------------------
 
-Questão 3) Busca paralela em vetor
-Faça um programa paralelo (com pelo menos 4 processos) para localizar 
-uma chave em um vetor.
+Questão 3) Faça um programa para criar um pipe e
+executar dois processos que são utilitários do Unix
+que se comuniquem através do pipe criado, assim
+como a shell faz. Exemplo: 
 
-Crie uma memória compartilhada com dados numéricos inteiros e desordenados e a divida
-pelo número de processos;
+endler$ ps | wc
+ 28 28 310
 
-Cada processo deve procurar o dado na sua área de memória e informar a posição onde o
-dado foi localizado. 
 -----------------------------------------------------
-ARQUIVO filhocidio.c
+ARQUIVO ex3.c
 
 #include <stdio.h>
-#include <signal.h>
+#include <string.h>
 #include <stdlib.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <unistd.h> 
 
-void childhandler(int signo);
-int delay;
-int main (int argc, char *argv[])
+#define TAM_VETOR 100   
+
+int main(void)
 {
-    pid_t pid;
-    signal(SIGCHLD, childhandler);
-    if ((pid = fork()) < 0)
+    int fd[2]; /* descritor a ser duplicado */
+    int id;
+
+    if (pipe(fd) < 0)
     {
-        fprintf(stderr, "Erro ao criar filho\n");
-        exit(-1);
+        puts ("Erro ao abrir os pipes");
+        exit (-1);
     }
-    if (pid == 0) /* child */
-        execve(argv[2], 0, 0); /* ou sleep(3);*/
-    else /* parent */
+
+    id = fork();
+    if(id == 0) //filho
     {
-        sscanf(argv[1], "%d", &delay); /* read delay from command line */
-        sleep(delay);
-        printf("Program %s exceeded limit of %d seconds!\n", argv[2], delay);
-        kill(pid, SIGKILL);
-        sleep(1); /* necessary for SIGCHLD to arrive */
+        close(fd[0]); //tem que fechar leitura
+        
+        dup2(fd[1], 1);
+        system("ps");
+
+        close(fd[1]);
     }
+    else if (id > 0)
+    {
+        close(fd[1]); //tem que fechar escrita
+
+        dup2(fd[0], 0);
+        system("wc");
+        close(fd[0]);
+    }
+    else
+    {
+        puts ("Erro na criação do novo processo\n");
+        exit (-2);
+    }
+
     return 0;
-}
-
-void childhandler(int signo) /* Executed if child dies before parent */
-{
-    int status;
-    pid_t pid = wait(&status);
-    printf("Child %d terminated within %d seconds com estado %d.\n", pid, delay, status);
-    exit(0);
-}
-
-
-ARQUIVO sleep5.c
-
-#include <stdio.h>
-#include <unistd.h>
-int main (void)
-{
-    fprintf(stdout, "indo dormir...\n");
-    sleep(5);
-    printf(stdout, "Acordei!\n");
-    return 0;
-}
-
-
-ARQUIVO sleep15.c
-
-#include <stdio.h>
-#include <unistd.h>
-int main (void)
-{
-    fprintf(stdout, "indo dormir...\n");
-    sleep(5);
-    printf(stdout, "Acordei!\n");
-    return 0;
-}
+} 
 -----------------------------------------------------
 
 COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o sleep5 sleep5.c
-$gcc -Wall -o sleep15 sleep15.c
-$gcc -Wall -o filhocidio filhocidio.c
-$./filhocidio 10 ./sleep5
-$./filhocidio 10 ./sleep15
+$gcc -Wall -o ex3 ex3.c
+$./ex3
 -----------------------------------------------------
 
 RESULTADO
 
-indo dormir...
-Acordei!
-Child 8296 terminated within 10 seconds com estado 0.
+    7      28     209
 
-----
-
-indo dormir...
-Program ./sleep15 exceeded limit of 10 seconds!
-Child 8360 terminated within 10 seconds com estado 9.
 -----------------------------------------------------
 
 CONCLUSÃO 
 
-Tanto os programas sleep5 e sleep 15 funcionam de forma semelhante: Assim que começam a rodar, 
-printam uma mensagem, são pausados por uma determinada quantidade de segundos e printam mais  uma mensagem. 
 
-O filhocidio inicia utilizando a função signal que cadastra uma reação ao recebimento do sinal do tipo SIGCHLD
-que é emitido quando há a pausa, continuidade ou a morte de um filho antes do pai. A reação criada foi a função
-childhandler que é chamada quando há o recebimento desse sinal. Nela, o pai recebe o status do processo pelo wait
-e printa as informações do processo fiho. 
-
-Voltando ao código, é criado um filho no fork. Foram usados 2 programas filhos: sleep5 e sleep 15 em que cada um
-printa uma mensagem, "dorme" por 5 e 15 segundos respectivamente e depois printam outra mensagem.  
-
-Enquanto o filho roda, o pai "dorme" por uma quantidade de segundos determinada por um parâmetro passado pela linha
-de comando. Se o programa filho, que até então estava rodando em paralelo, não morrer antes que a "soneca" do pai
-termine, ele printa a quantidade de tempo até então e mata o filho com o comando kill, e depois "dorme" novamente
-apenas para que o sinal da morte do filho chegue e a função childhandler seja acionada, sendo que nesse print, o 
-status do filho foi que ele terminou com código 9. Se o filho terminar antes do fim da "soneca" do pai, os dois prints
-do filho são mostrados na tela e a childhandler é acionada, mostrando que o filho terminou com código 0 e o pai é encerrado.
+No programa, após a criação dos canais de comunicação e da criação do processo filho pelo 
+fork, no filho o canal de leitura é fechado e o stdout é redirecionado para a o canal de 
+comunicação de escrita fd[1]. Com isso, ao usar o system("ps"), a saída desse comando vai para 
+o pipe. No programa pai, o canal de leitura é fechado e o stdin é redirecionado para o canal 
+de leitura fd[0]. Com isso, utilizando o entrada que já estava com o resultado do comando anterior,
+o comando system("wc") atua em cima do que já estava na saída, assim como o comando na shell e 
+printa a saída no terminal. Em ambos os casos, as saídas não utilizadas anteriormente foram fechadas.
 
 -----------------------------------------------------
 
