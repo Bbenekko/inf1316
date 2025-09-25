@@ -170,8 +170,6 @@ ARQUIVO ex3.c
 #include <stdlib.h>
 #include <unistd.h> 
 
-#define TAM_VETOR 100   
-
 int main(void)
 {
     int fd[2]; /* descritor a ser duplicado */
@@ -229,7 +227,7 @@ No programa, após a criação dos canais de comunicação e da criação do pro
 fork, no filho o canal de leitura é fechado e o stdout é redirecionado para a o canal de 
 comunicação de escrita fd[1]. Com isso, ao usar o system("ps"), a saída desse comando vai para 
 o pipe. No programa pai, o canal de leitura é fechado e o stdin é redirecionado para o canal 
-de leitura fd[0]. Com isso, utilizando o entrada que já estava com o resultado do comando anterior,
+de leitura fd[0]. Com isso, utilizando a entrada que já estava com o resultado do comando anterior,
 o comando system("wc") atua em cima do que já estava na saída, assim como o comando na shell e 
 printa a saída no terminal. Em ambos os casos, as saídas não utilizadas anteriormente foram fechadas.
 

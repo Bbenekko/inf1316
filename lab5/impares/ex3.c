@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <unistd.h> 
 
-#define TAM_VETOR 100   
-
 int main(void)
 {
     int fd[2]; /* descritor a ser duplicado */
