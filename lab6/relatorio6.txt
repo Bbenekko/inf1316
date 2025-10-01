@@ -5,72 +5,104 @@ Questão 1) Faça um programa para criar dois processos que se comunicam via pip
 O Pai lê do pipe enquanto o filho escreve no pipe. Exiba o resultado do que foi 
 escrito e lido.
 -----------------------------------------------------
-ARQUIVO ex1.c
+ARQUIVO ex1_in.c
 
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <unistd.h> 
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#define OPENMODE (O_WRONLY | O_NONBLOCK)
+#define FIFO "minhaFifo"
 
-#define TAM_VETOR 100   
 
-int main(void)
+int main (void)
 {
-    int fd[2]; /* descritor a ser duplicado */
-    int qtdLidos = 0;
-    int qtdEnviados = 0;
-    int id;
-
-    if (pipe(fd) < 0)
+    int fpFIFO;
+    char mensagem[1000];
+    if (access(FIFO, F_OK) == -1)
     {
-        puts ("Erro ao abrir os pipes");
-        exit (-1);
+        if (mkfifo (FIFO, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO);
+            return -1;
+        }
     }
-
-    id = fork();
-    if(id == 0) //filho
+    puts ("Abrindo FIFO");
+    if ((fpFIFO = open (FIFO, OPENMODE)) < 0)
     {
-        close(fd[0]); //tem que fechar leitura
-        char frase[TAM_VETOR] = "Ola pai! Aqui e o seu filho. Meu pid e ";
-        char idStr [10];
-        sprintf(idStr, "%d", getpid());
-        strcat(frase, idStr);
-        qtdEnviados = write(fd[1], frase, strlen(frase) + 1);
-        printf("%d dados enviados\n", qtdEnviados);
-        close(fd[1]);
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO);
+        return -2;
     }
-    else if (id > 0)
-    {
-        close(fd[1]); //tem que fechar escrita
-        char frase[TAM_VETOR];
-
-        qtdLidos = read(fd[0], frase, TAM_VETOR);
-        printf("%d dados lidos: %s\n", qtdLidos, frase);
-        printf("\nAqui e o pai e o pid do filho era %d\n", id);
-        close(fd[0]);
-    }
-    else
-    {
-        puts ("Erro na criação do novo processo\n");
-        exit (-2);
-    }
-
-    
+    puts ("Insira mensagem para a FIFO:");
+    fgets(mensagem, sizeof mensagem, stdin);
+    write(fpFIFO, mensagem, strlen(mensagem));
+    puts ("Fim da escrita");
+    close (fpFIFO);
     return 0;
-}  
+}
+----------------------------------------------------
+ARQUIVO ex1_out.c 
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#define OPENMODE (O_RDONLY)
+//#define OPENMODE (O_RDONLY | O_NONBLOCK)
+#define FIFO "minhaFifo"
+#define EVER ;;
+
+int main (void)
+{
+    int fpFIFO;
+    char ch;
+    if (access(FIFO, F_OK) == -1)
+    {
+        if (mkfifo (FIFO, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO);
+            return -1;
+        }
+    }
+    puts ("Abrindo FIFO");
+    if ((fpFIFO = open (FIFO, OPENMODE)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO);
+        return -2;
+    }
+    puts ("Aguardando leitura!");
+    while (read (fpFIFO, &ch, sizeof(ch)) > 0) putchar (ch);
+    puts ("\nFim da leitura");
+    close (fpFIFO);
+    return 0;
+}
 
 -----------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o ex1 ex1.c
-$./ex1
+COMPILAÇÃO E EXECUÇÃO parte 1 (primeira janela)
+$gcc -Wall -o ex1_out ex1_out.c
+$./ex1_out
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO parte 1 (segunda janela)
+$gcc -Wall -o ex1_in ex1_in.c
+$./ex1_in
 -----------------------------------------------------
 RESULTADO
+(Segunda janela, do ex1_in)
+Abrindo FIFO
+Insira mensagem para a FIFO:
+$Mensagem muito bacana!!
+Fim da escrita
 
-47 dados enviados
-47 dados lidos: Ola pai! Aqui e o seu filho. Meu pid e 1346261
+(Primeira janela, do ex1_out)
+Abrindo FIFO
+Aguardando leitura!
+Mensagem muito bacana!!
 
-Aqui e o pai e o pid do filho era 1346261
-
+Fim da leitura
 -----------------------------------------------------
 CONCLUSÃO
 
