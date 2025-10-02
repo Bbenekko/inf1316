@@ -119,69 +119,116 @@ a FIFO para entrada, e espera o uma entrada do terminal para mandar para a FIFO.
 
 -----------------------------------------------------
 
-Questão 2) Faça um programa para redirecionar a entrada e
-a saída, lendo os dados de um arquivo e gerando
-a saída em outro.
+Questão 2) Escreva um programa que primeiro criauma FIFO e em seguida cria dois processos
+filho que escrevem uma string na FIFO.O pai dá um waitpid em seguida lê as strings desse 
+FIFO e exibe na tela.
 -----------------------------------------------------
 ARQUIVO ex2.c
 
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 
-int main ()
+#define FIFO "minhaFifo"
+#define ROPENMODE (O_RDONLY | O_NONBLOCK)
+#define WOPENMODE (O_WRONLY | O_NONBLOCK)
+
+int main (void)
 {
-    int fdIn, fdOut;
-    int retorno; /* valor de retorno de dup */
-    int retorno2; 
+    int id = 0;
+    char vPalavra[][10] = {"Linux", "Windows"};
+    int status;
+    int fifo;
+    char vRetorno[2][10];
+    char ch;
+    int i = 0, j = 0;
 
-    if ((fdIn=open("arquivoEnt.txt", O_RDONLY,0666)) == -1)
+    if (access(FIFO, F_OK) == -1)
     {
-        perror("Error open()");
-        return -1;
-    }
-    close(0);
-    dup(fdIn);
+        if (mkfifo (FIFO, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO);
+            return -1;
+        }
+        puts ("FIFO criada com sucesso");
+    }  
 
-    if ((fdOut=open("arquivoSaida.txt", O_RDWR|O_CREAT|O_TRUNC,0666)) == -1)
+    if ((fifo = open (FIFO, ROPENMODE)) < 0)
     {
-        perror("Error open()");
-        return -1;
-    }
-    close(1);
-    dup(fdOut);
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO);
+        return -2;
+    } 
 
-    char conteudo[1000];
-    fgets(conteudo, sizeof conteudo, stdin);
-    printf("Conteudo do arquivoEnt: %s", conteudo);
-    
+    for (int i = 0; i < 2; i++)
+    {
+        id = fork();
+        if(id == 0) //filho
+        {
+            if ((fifo = open(FIFO, WOPENMODE)) < 0)
+            {
+                puts ("Erro ao abrir a FIFO para escrita"); 
+                return -1;
+            }
+            printf("palavra[%d]: %s --- %ld\n", i, vPalavra[i], strlen(vPalavra[i]) + 1);
+            write(fifo, vPalavra[i],strlen(vPalavra[i]) + 1);
+            close (fifo);
+            exit(0);
+        }
+        if(id < 0)
+        {
+            puts ("Erro ao abrir os pipes");
+            exit (-1);
+        }
+
+    }
+
+    waitpid(-1, &status, 0);
+
+    while (read (fifo, &ch, sizeof(ch)) > 0)
+    {
+        vRetorno[i][j++] = ch;
+
+        if (ch == '\0')
+        {
+            i++;
+            j = 0;
+        }
+    }
+
+    close(fifo);
+
+    printf("Palavras lidas: %s e %s\n", vRetorno[0], vRetorno[1]);
     return 0;
-}
-
-----------------------------------------------------
-ARQUIVO arquivoEnt.txt
-Mensagem muito legal!
+} 
 
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO
 $gcc -Wall -o ex2 ex2.c
-$./ex2 &
+$./ex2
 
 -----------------------------------------------------
 RESULTADO
 
-(Dentro de arquivoSaida.txt):
-Conteudo do arquivoEnt: Mensagem muito legal!
+FIFO criada com sucesso
+palavra[0]: Linux --- 6
+palavra[1]: Windows --- 8
+Palavras lidas: Linux e Windows
 
 -----------------------------------------------------
 
 CONCLUSÃO
 
-No código foram fechadas a entrada e saída padrão, e foram abertas no lugar a fdIn e fdOut, 
-que direcionam a entrada padrão para o arquivoEnt.txt e a saída padrão arquivoSaida.txt.
-Logo com fgets é possível ler o arquivoEnt e com printf é possível escrever no arquivoSaida.
+No código é utilizado a função mkfifo para criar uma fifo apenas quando ela não existe, sendo essa 
+verificação feita com o comando access. É aberta a fifa no modo de leitura e depois os filhos são 
+criados e em cada filho a fifa é aberta no modo de escrita de modo que, com a função write, ele escreve
+a string na fifo de modo semelhante a um arquivo. Enquanto os filhos terminam de processar, o pai os 
+espera com um waitpid e lê da pid caracter por caracter e os copia para um array de strings. No final,
+as strings formadas foram printadas mostrando que o pai leu corretamente as strings da fifo. Tanto nos 
+filhos quano no pai a fifo foi fechada antes do processo ser encerrado. 
 
 -----------------------------------------------------
 
