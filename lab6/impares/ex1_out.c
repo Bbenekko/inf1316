@@ -31,5 +31,6 @@ int main (void)
     while (read (fpFIFO, &ch, sizeof(ch)) > 0) putchar (ch);
     puts ("\nFim da leitura");
     close (fpFIFO);
+    unlink(FIFO);
     return 0;
 }

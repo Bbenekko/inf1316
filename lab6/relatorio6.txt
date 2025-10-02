@@ -1,9 +1,13 @@
 Bento Bruno Contarini Gonçalves  -  2311122
 Mayara Ramos Damazio - 2210833
 
-Questão 1) Faça um programa para criar dois processos que se comunicam via pipe. 
-O Pai lê do pipe enquanto o filho escreve no pipe. Exiba o resultado do que foi 
-escrito e lido.
+Questão 1) Abra duas seções de terminais
+* Na primeira, execute um programa que fica em
+loop lendo de uma FIFO para depois escrever na
+saída padrão (tela)
+* Na segunda, execute um programa que fica lendo
+da entrada padrão (teclado) e depois escreve na
+mesma FIFO
 -----------------------------------------------------
 ARQUIVO ex1_in.c
 
@@ -78,6 +82,7 @@ int main (void)
     while (read (fpFIFO, &ch, sizeof(ch)) > 0) putchar (ch);
     puts ("\nFim da leitura");
     close (fpFIFO);
+    unlink(FIFO);
     return 0;
 }
 
@@ -106,17 +111,11 @@ Fim da leitura
 -----------------------------------------------------
 CONCLUSÃO
 
-No programa pai, é criado um vetor de duas posições fd e nele são guardados os descritores 
-de leitura e escrita respectivamente. Após isso, é feito o fork e um processo filho é criado. 
-Na parte que apenas o processo filho roda, é fechada a comunicação de leitura com a função 
-close e é enviado um dado, nesse caso uma string com tamanho de 47, pelo comando write pela
-comunicação de pipe na segunda posição do vetor fd. No pai, é fechada a comunicação de saída
-e é usado o comando read para ler o dado presente na pipe e colocar em alguma variável, um 
-vetor de string no caso específico e depois a string foi printada. Foi necessário se atentar
-à quantidade de bytes que se quer escrever ou ler nos comandos read ou write. Também se 
-observa que, no write, foi usado o strlen(str) + 1 para dizer o quanto de bytes da capacidade
-total da string que deveria ser enviada e, no read, por mais que ele pudesse ler até 100,
-o read leu exatamente a quantidade de bytes que a string passada tem.
+Os programas utilizaram como exemplos os códigos dados em sala de aula. Para a execução
+sem problemas do programa, é necessário executar primeiro o "ex1_out" e depois o "ex1_in",
+em terminais diferentes! O programa "ex1_out" abre uma FIFO para leitura, e aguarda 
+haver algum conteúdo na FIFO, para assim printar o conteúdo e fecha-la. Já a "ex1_in", abre 
+a FIFO para entrada, e espera o uma entrada do terminal para mandar para a FIFO.
 
 -----------------------------------------------------
 
@@ -186,173 +185,202 @@ Logo com fgets é possível ler o arquivoEnt e com printf é possível escrever 
 
 -----------------------------------------------------
 
-Questão 3) Faça um programa para criar um pipe e
-executar dois processos que são utilitários do Unix
-que se comuniquem através do pipe criado, assim
-como a shell faz. Exemplo: 
-
-endler$ ps | wc
- 28 28 310
+Questão 3) Escreva um servidor e um cliente usando duas
+FIFOs: uma para enviar strings para o servidor,
+e outra para transmitir as respostas de volta
+para os clientes. O servidor deverá rodar em
+background e transformar cada palavra
+recebida de minusculas para maiúsculas.
+Obs: execute os seus clientes em terminais diferentes.
 
 -----------------------------------------------------
-ARQUIVO ex3.c
+ARQUIVO ex3_client.c
 
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <unistd.h> 
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#define FIFO_SERVER_IN "serverFifoIn"
+#define FIFO_SERVER_OUT "serverFifoOut"
 
-int main(void)
+int inFIFO, outFIFO;
+
+int main (void)
 {
-    int fd[2]; /* descritor a ser duplicado */
-    int id;
-
-    if (pipe(fd) < 0)
+    char ch;
+    if (access(FIFO_SERVER_IN, F_OK) == -1)
     {
-        puts ("Erro ao abrir os pipes");
-        exit (-1);
+        if (mkfifo (FIFO_SERVER_IN, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_SERVER_IN);
+            return -1;
+        }
+    }
+    puts ("Abrindo FIFO de entrada do cliente!");
+    if ((inFIFO = open (FIFO_SERVER_IN, O_WRONLY)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_SERVER_IN);
+        return -2;
     }
 
-    id = fork();
-    if(id == 0) //filho
+    if (access(FIFO_SERVER_OUT, F_OK) == -1)
     {
-        close(fd[0]); //tem que fechar leitura
+        if (mkfifo (FIFO_SERVER_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_SERVER_OUT);
+            return -1;
+        }
+    }
+    puts ("Abrindo FIFO de entrada do cliente!");
+    if ((outFIFO = open (FIFO_SERVER_OUT, O_RDONLY)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_SERVER_OUT);
+        return -2;
+    }
+
+    for(;;)
+    {
+        char mensagem[1000];
+        puts ("Aguardando entrada!");
+        fgets(mensagem, sizeof mensagem, stdin);
+        puts ("Fim da entrada!");
         
-        dup2(fd[1], 1);
-        system("ps");
+        write(inFIFO, mensagem, strlen(mensagem));
+        puts ("Aguardando leitura!");
+        while (read (outFIFO, &ch, sizeof(ch)) == 1 && ch != '\n') putchar (ch);
+        putchar('\n');
+        puts ("Fim da leitura");
+    }
 
-        close(fd[1]);
-    }
-    else if (id > 0)
-    {
-        close(fd[1]); //tem que fechar escrita
 
-        dup2(fd[0], 0);
-        system("wc");
-        close(fd[0]);
-    }
-    else
+
+    return 0;   
+}
+-----------------------------------------------------
+ARQUIVO ex3_server.c 
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#define FIFO_SERVER_IN "serverFifoIn"
+#define FIFO_SERVER_OUT "serverFifoOut"
+
+int inFIFO, outFIFO;
+
+int main (void)
+{
+    char ch;
+    char mensagem[1000];
+    if (access(FIFO_SERVER_IN, F_OK) == -1)
     {
-        puts ("Erro na criação do novo processo\n");
-        exit (-2);
+        if (mkfifo (FIFO_SERVER_IN, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_SERVER_IN);
+            return -1;
+        }
     }
+    puts ("Abrindo FIFO de entrada do servidor!");
+    if ((inFIFO = open (FIFO_SERVER_IN, O_RDONLY)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_SERVER_IN);
+        return -2;
+    }
+
+    if (access(FIFO_SERVER_OUT, F_OK) == -1)
+    {
+        if (mkfifo (FIFO_SERVER_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_SERVER_OUT);
+            return -1;
+        }
+    }
+    puts ("Abrindo FIFO de entrada do servidor!");
+    if ((outFIFO = open (FIFO_SERVER_OUT, O_WRONLY)) < 0)
+    {   
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_SERVER_OUT);
+        return -2;
+    }
+
+    for(;;)
+    {
+        int n = 0;
+        puts ("Aguardando leitura!");
+        while (n < (int)sizeof(mensagem)-1 && read (inFIFO, &ch, sizeof(ch)) > 0 && ch != '\n') 
+        {
+            mensagem[n] = ch;
+            n++;
+        }
+        mensagem[n] = '\0';
+        printf("Mensagem recebida: %s\n", mensagem);
+        for(int i = 0; i < strlen(mensagem); i++)
+        {
+            if (mensagem[i] >= 'a' && mensagem[i] <= 'z') mensagem[i] = mensagem[i] - 32;
+        }
+        write(outFIFO, mensagem, n);
+        write(outFIFO, "\n", 1);
+    }
+
+
 
     return 0;
-} 
+}
 -----------------------------------------------------
+COMPILAÇÃO
+$gcc -Wall -o ex3_client ex3_client.c
+$gcc -Wall -o ex3_server ex3_server.c
 
-COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o ex3 ex3.c
-$./ex3
 -----------------------------------------------------
+EXECUÇÃO e RESULTADO (terminal 1)
 
-RESULTADO
+$./ex3_server &
+[1] 13952
+Abrindo FIFO de entrada do servidor!
 
-    7      28     209
+$./ex3_client
+Abrindo FIFO de entrada do cliente!
+Abrindo FIFO de entrada do cliente!
+Abrindo FIFO de entrada do servidor!
+Aguardando leitura!
+Aguardando entrada!
+cliente1
+Fim da entrada!
+Aguardando leitura!
+Mensagem recebida: cliente1
+Aguardando leitura!
+CLIENTE1
+Fim da leitura
+Aguardando entrada!
+Mensagem recebida: cliente2
+Aguardando leitura!
+
+-----------------------------------------------------
+EXECUÇÃO e RESULTADO (terminal 2)
+$./ex3_client 
+Abrindo FIFO de entrada do cliente!
+Abrindo FIFO de entrada do cliente!
+Aguardando entrada!
+cliente2
+Fim da entrada!
+Aguardando leitura!
+CLIENTE2
+Fim da leitura
+Aguardando entrada!
 
 -----------------------------------------------------
 
 CONCLUSÃO 
 
 
-No programa, após a criação dos canais de comunicação e da criação do processo filho pelo 
-fork, no filho o canal de leitura é fechado e o stdout é redirecionado para a o canal de 
-comunicação de escrita fd[1]. Com isso, ao usar o system("ps"), a saída desse comando vai para 
-o pipe. No programa pai, o canal de leitura é fechado e o stdin é redirecionado para o canal 
-de leitura fd[0]. Com isso, utilizando a entrada que já estava com o resultado do comando anterior,
-o comando system("wc") atua em cima do que já estava na saída, assim como o comando na shell e 
-printa a saída no terminal. Em ambos os casos, as saídas não utilizadas anteriormente foram fechadas.
-
------------------------------------------------------
-
-Questão 4) Faça um programa que cria dois processos
-leitores e um processo escritor em uma mesma
-pipe. Faça o escritor dormir metade do tempo
-dos leitores, e mostre como os leitores
-consomem os dados produzidos pelo escritor.
-Obs: não force uma alternância controlada por
-SIGSTOP/SIGCONT.
------------------------------------------------------
-ARQUIVO ex4.c
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/wait.h>
-
-int main (int argc, char *argv[])
-{
-    int nDadosTx, nDadosRx; // quantidade de dados transmitidos/recebidos
-    int fd[2]; // descritor dos pipes
-    const char textoTX[] = "mensagem";
-    char textoRX[sizeof textoTX];
-    int pid1, pid2, status;
-
-    if (pipe(fd) < 0)
-    {
-        puts ("Erro ao abrir os pipes");
-        exit (-1);
-    }
-
-    if((pid1 = fork()) == 0) // filho 1 (leitor)
-    {
-        sleep(4);
-        close(fd[1]);
-        nDadosRx = read(fd[0], textoRX, sizeof textoRX);
-        printf("Leitura de %d dados pelo filho 1.\nConteúdo: %s\n", nDadosRx, textoRX);
-        close(fd[0]);
-        exit(3);
-    }
-    if ((pid2 = fork()) == 0) // filho 2 (leitor)
-    {
-        sleep(4);
-        close(fd[1]);
-        nDadosRx = read(fd[0], textoRX, sizeof textoRX);
-        printf("Leitura de %d dados pelo filho 2.\nConteúdo: %s\n", nDadosRx, textoRX);
-        close(fd[0]);
-        exit(3);
-    }
-
-    sleep(2);
-    close(fd[0]);
-    nDadosTx = write(fd[1], textoTX, strlen(textoTX) + 1);
-    close(fd[1]);
-    printf("%d dados escritos pelo pai!\n", nDadosTx);
-
-    waitpid(-1, &status, 0);
-
-    
-    return 0;
-}
-
------------------------------------------------------
-COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o ex4 ex4.c
-$./ex4
-
------------------------------------------------------
-RESULTADO 1 (sleep 1 no pai e sleep 2 nos filhos)
-
-9 dados escritos pelo pai!
-Leitura de 0 dados pelo filho 1.
-Leitura de 9 dados pelo filho 2.
-Conteúdo: 
-Conteúdo: mensagem
-
-------------------------------------------------------
-RESULTADO 2 (sleep 2 no pai e sleep 4 nos filhos)
-
-9 dados escritos pelo pai!
-Leitura de 9 dados pelo filho 1.
-Conteúdo: mensagem
-Leitura de 0 dados pelo filho 2.
-Conteúdo: 
-
------------------------------------------------------
-CONCLUSÃO
-
-A partir do resultado, é possível concluir que após a leitura da pipe,
-não é possível reler o que já foi lido, pois o dado é removido da
-pipe pelo processo que o leu.
+Os programas funcionam, porém as FIFOs criadas não são fechadas com o fechamento do programa (através
+da tecla Ctrl+c), o que seria um pequeno defeito, porém não afeta aperformance e demandou muito tempo,
+logo não foi possível resolve-lo. O código do ex3_server.c abre as duas FIFOs (entrada e saída do servidor)
+e através de um loop infinito, fica verificando se recebeu alguma coisa na FIFO de entrada (serverFifoIn) (com o divisor
+de mensagens sendo a '\n'). Após receber algo na FIFO, é realizada uma simples operação nos caracteres de letras para
+torna-las maiusculas, e depois é enviado a string pela FIFO de saída (serverFifoOut).
+Já a ex3_client.c fica aguardando um input (teclado), e o envia para a FIFO de entrada (serverFifoIn), e fica aguardando
+a FIFO de saída (serverFifoOut) para printar no terminal o resultado enviado pelo servidor.
