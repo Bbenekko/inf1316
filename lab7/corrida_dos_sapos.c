@@ -1,5 +1,9 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define NUM_THREADS 5
 #define PULO_MAXIMO 100
@@ -9,18 +13,6 @@ static int classificacao = 1;
 static pthread_mutex_t lock;
 static char * resp[200];
 static int cont = 0;
-int main()
-{
-    classificacao =1;
-    pthread_t threads[NUM_THREADS];
-    int t;
-    printf("Corrida iniciada ... \n");
-    for(t=0;t < NUM_THREADS;t++) pthread_create(&threads[t], NULL, Correr, (void *) t);
-    for(t=0;t < NUM_THREADS; t++) pthread_join(threads[t],NULL);
-    printf("\n Acabou!!\n");
-    pthread_exit(NULL);
-
-}
 
 void *Correr(void *sapo)
 {
@@ -40,4 +32,17 @@ void *Correr(void *sapo)
     cont++;
     classificacao++;
     pthread_exit(NULL);
+}
+
+int main()
+{
+    classificacao =1;
+    pthread_t threads[NUM_THREADS];
+    int t;
+    printf("Corrida iniciada ... \n");
+    for(t=0;t < NUM_THREADS;t++) pthread_create(&threads[t], NULL, Correr, (void *) t);
+    for(t=0;t < NUM_THREADS; t++) pthread_join(threads[t],NULL);
+    printf("\n Acabou!!\n");
+    pthread_exit(NULL);
+
 }
