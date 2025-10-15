@@ -1,0 +1,177 @@
+./ex4
+Conteudo inserido na fila: 1804289384
+Conteudo inserido na fila: 846930887
+Conteudo lido da primeira posição da fila: 1804289384
+Conteudo inserido na fila: 1681692778
+Conteudo lido da primeira posição da fila: 846930887
+Conteudo inserido na fila: 1714636916
+Conteudo inserido na fila: 1957747794
+Conteudo inserido na fila: 424238336
+Conteudo lido da primeira posição da fila: 1681692778
+Conteudo lido da primeira posição da fila: 1714636916
+Conteudo inserido na fila: 719885387
+Conteudo inserido na fila: 1649760493
+Conteudo inserido na fila: 596516650
+Conteudo inserido na fila: 1189641422
+Conteudo lido da primeira posição da fila: 1957747794
+Conteudo lido da primeira posição da fila: 424238336
+Conteudo inserido na fila: 1025202363
+Conteudo inserido na fila: 1350490028
+Conteudo inserido na fila: 783368691
+Conteudo inserido na fila: 1102520060
+Conteudo lido da primeira posição da fila: 719885387
+Conteudo lido da primeira posição da fila: 1649760493
+Conteudo inserido na fila: 2044897764
+Conteudo inserido na fila: 1967513927
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 596516650
+Conteudo inserido na fila: 1365180541
+Conteudo lido da primeira posição da fila: 1189641422
+Conteudo inserido na fila: 1540383427
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1025202363
+Conteudo inserido na fila: 304089173
+Conteudo lido da primeira posição da fila: 1350490028
+Conteudo inserido na fila: 1303455737
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 783368691
+Conteudo lido da primeira posição da fila: 1102520060
+Conteudo inserido na fila: 35005212
+Conteudo inserido na fila: 521595369
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 2044897764
+Conteudo inserido na fila: 294702568
+Conteudo lido da primeira posição da fila: 1967513927
+Conteudo inserido na fila: 1726956430
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1365180541
+Conteudo inserido na fila: 336465783
+Conteudo lido da primeira posição da fila: 1540383427
+Conteudo inserido na fila: 861021531
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 304089173
+Conteudo inserido na fila: 278722863
+Conteudo lido da primeira posição da fila: 1303455737
+Conteudo inserido na fila: 233665124
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 35005212
+Conteudo lido da primeira posição da fila: 521595369
+Conteudo inserido na fila: 2145174068
+Conteudo inserido na fila: 468703136
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 294702568
+Conteudo lido da primeira posição da fila: 1726956430
+Conteudo inserido na fila: 1101513930
+Conteudo inserido na fila: 1801979803
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 336465783
+Conteudo inserido na fila: 1315634023
+Conteudo lido da primeira posição da fila: 861021531
+Conteudo inserido na fila: 635723059
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 278722863
+Conteudo inserido na fila: 1369133070
+Conteudo lido da primeira posição da fila: 233665124
+Conteudo inserido na fila: 1125898168
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 2145174068
+Conteudo inserido na fila: 1059961394
+Conteudo lido da primeira posição da fila: 468703136
+Conteudo inserido na fila: 2089018457
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1101513930
+Conteudo inserido na fila: 628175012
+Conteudo lido da primeira posição da fila: 1801979803
+Conteudo inserido na fila: 1656478043
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1315634023
+Conteudo inserido na fila: 1131176230
+Conteudo lido da primeira posição da fila: 635723059
+Conteudo inserido na fila: 1653377374
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1369133070
+Conteudo inserido na fila: 859484422
+Conteudo lido da primeira posição da fila: 1125898168
+Conteudo inserido na fila: 1914544920
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1059961394
+Conteudo inserido na fila: 608413785
+Conteudo lido da primeira posição da fila: 2089018457
+Conteudo inserido na fila: 756898538
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 628175012
+Conteudo inserido na fila: 1734575199
+Conteudo lido da primeira posição da fila: 1656478043
+Conteudo inserido na fila: 1973594325
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1131176230
+Conteudo inserido na fila: 149798316
+Conteudo lido da primeira posição da fila: 1653377374
+Conteudo inserido na fila: 2038664371
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 859484422
+Conteudo inserido na fila: 1129566414
+Conteudo lido da primeira posição da fila: 1914544920
+Conteudo inserido na fila: 184803527
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 608413785
+Conteudo inserido na fila: 412776092
+Conteudo lido da primeira posição da fila: 756898538
+Conteudo inserido na fila: 1424268981
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1734575199
+Conteudo inserido na fila: 1911759957
+Conteudo lido da primeira posição da fila: 1973594325
+Conteudo inserido na fila: 749241874
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 149798316
+Conteudo inserido na fila: 137806863
+Conteudo lido da primeira posição da fila: 2038664371
+Conteudo inserido na fila: 42999171
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1129566414
+Conteudo inserido na fila: 982906997
+Conteudo lido da primeira posição da fila: 184803527
+Conteudo inserido na fila: 135497282
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 412776092
+Conteudo inserido na fila: 511702306
+Conteudo lido da primeira posição da fila: 1424268981
+Conteudo inserido na fila: 2084420926
+Fila cheia!
+Fila cheia!
+Conteudo lido da primeira posição da fila: 1911759957
+Conteudo inserido na fila: 1937477085
+Conteudo lido da primeira posição da fila: 749241874
+Conteudo inserido na fila: 1827336328
+Conteudo lido da primeira posição da fila: 137806863
+Conteudo lido da primeira posição da fila: 42999171
+Conteudo lido da primeira posição da fila: 982906997
+Conteudo lido da primeira posição da fila: 135497282
+Conteudo lido da primeira posição da fila: 511702306
+Conteudo lido da primeira posição da fila: 2084420926
+Conteudo lido da primeira posição da fila: 1937477085
+Conteudo lido da primeira posição da fila: 1827336328
