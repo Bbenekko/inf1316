@@ -1,0 +1,371 @@
+Bento Bruno Contarini Gonçalves  -  2311122
+Mayara Ramos Damazio - 2210833
+
+Questão 1) Execute o programa “ctrl-c.c”.
+Digite Ctrl-C e Ctrl-\. Analise o resultado.
+
+Neste mesmo programa, remova os
+comandos signal( ) e repita o teste anterior
+observando os resultados.
+-----------------------------------------------------
+ARQUIVO ex1.c
+
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+
+#define EVER ;;
+void intHandler(int sinal);
+void quitHandler(int sinal);
+
+int main (void)
+{
+void (*p)(int); // ponteiro para função que recebe int como
+    // parâmetro
+    p = signal(SIGINT, intHandler);
+    printf("Endereco do manipulador anterior %p\n", p);
+    p = signal(SIGQUIT, quitHandler);
+    printf("Endereco do manipulador anterior %p\n", p);
+    puts ("Ctrl-C desabilitado. Use Ctrl-\\ para terminar");
+    for(EVER);
+}
+void intHandler(int sinal)
+{
+    printf("Você pressionou Ctrl-C (%d) \n", sinal);
+}
+void quitHandler(int sinal)
+{
+    printf("Terminando o processo...\n");
+    exit (0);
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ctrl-c ctrl-c.c
+$./ctrl-c
+-----------------------------------------------------
+RESULTADO 1
+
+Endereco do manipulador anterior (nil)
+Endereco do manipulador anterior (nil)
+Ctrl-C desabilitado. Use Ctrl-\ para terminar
+^CVocê pressionou Ctrl-C (2) 
+^CVocê pressionou Ctrl-C (2) 
+^CVocê pressionou Ctrl-C (2) 
+^\Terminando o processo...
+
+RESULTADO 2
+
+Endereco do manipulador anterior (nil)
+Endereco do manipulador anterior (nil)
+Ctrl-C desabilitado. Use Ctrl-\ para terminar
+^C
+
+-----------------------------------------------------
+CONCLUSÃO
+
+No programa original, a função signal foi utilizada duas vezes, de modo que na primeira vez ela captura
+o sinal SIGINT que é recebido quando se escrever ctrl-c na shell enquanto roda um programa para interrompê-lo 
+e na segunda vez ele captura o sinal SIGQUIT que também interrompre o programa, mas ele gera um core dump. 
+Na captura do ctrl-c, ele passa a chamar a função intHandler que printa uma mensagem e na com ctrl-\, ela
+printa uma mensagem e dá um exit no programa. Com isso, ao tratar o sinal de ctrl-c, ele já não afeta mais o 
+programa, ou seja, ao usar ctrl-c no terminal, o programa já não é mais terminado, mas printa a mensagem da
+função intHandler já que ela foi cadastrada como a reação, o que deve ser feito quando esse sinal é recebido. 
+Ao usar ctrl-\, o programa é terminado, mas não da forma que normalmente aconteceria: a função quitHandler é 
+acionada, o que faz com que, ao terminar o programa com um exit(0), não há criação de um core dump.
+
+Quando se remove os comandos signal(), tanto o ctrl-c, quanto o ctrl-\ encerram o programa do jeito padrão: o 
+ctrl-c interrompendo e o ctrl-\ criando o core dump.
+
+-----------------------------------------------------
+
+Questão 2) 
+Tente fazer um programa para interceptar o
+sinal SIGKILL. Você conseguiu? Explique.
+-----------------------------------------------------
+ARQUIVO ex2.c
+
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+
+#define EVER ;;
+
+void intHandler(int sinal);
+void quitHandler(int sinal);
+
+int main (void)
+{
+    void (*p)(int); // ponteiro para função que recebe int como
+    // parâmetro
+    p = signal(SIGKILL, intHandler);
+    printf("Programa rodando!\n");
+    for(EVER);
+}
+
+void intHandler(int sinal)
+{
+    printf("Você tentou dar SIGKILL!");
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 1
+$gcc -Wall -o ex2 ex2.c
+$./ex2 &
+
+-----------------------------------------------------
+RESULTADO
+
+Programa rodando!
+$ps 
+$kill -s 9 8422
+[1]+    Killed             ./ex2
+
+-----------------------------------------------------
+
+CONCLUSÃO
+
+Não foi possível interceptar o sinal SIGKILL, mesmo que no código houvesse a função signal()
+com um inthandler, para alterar o sinal para um sinal "inofensivo". Foi explicado em aula
+que o sinal kill não pode ser interceptado.
+
+-----------------------------------------------------
+
+Questão 3) Usando threads, escreva um programa C que implemente o
+problema do produtor/consumidor. O produtor deve produzir
+dados (números inteiros pseudo-aleatórios) a cada 1 segundo
+colocando-os em uma fila (buffer, implementação circular). O
+consumidor deve retirar dados da fila a cada 2 segundos. O
+tamanho máximo da fila deve ser de 8 elementos (MAXFILA) e
+tanto o produtor como o consumidor devem produzir/consumir
+64 elementos (números inteiros de 1 a 64, por exemplo)
+evitando condições de corrida. Variáveis compartilhadas entre
+threads são simplesmente variáveis globais.
+-----------------------------------------------------
+ARQUIVO ex3.c
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <pthread.h>
+
+#define MAX_PRODUZ 64
+#define MAXFILA 8
+// cores para output
+#define RED  "\x1b[31m"
+#define YELLOW  "\x1b[33m"
+#define BLUE  "\x1b[34m"
+#define RESET   "\x1b[0m"
+
+pthread_mutex_t mutex; // mutex semaphore 
+pthread_cond_t consumer_c, producer_c; // 2 condition variables for consumer, and producer
+
+int fila[MAXFILA]; // fila de 8 posições
+int vaziosFila = MAXFILA;
+
+void* producer(void *ptr)
+{
+    for (int i = 1; i <= MAX_PRODUZ; i++) {
+        sleep(1);
+        pthread_mutex_lock(&mutex); // entrando zona critica
+        while(vaziosFila == 0) // espera caso a fila esteja cheia
+        {
+            printf(RED"Fila cheia!\n"RESET);
+            pthread_cond_wait(&producer_c, &mutex);
+        }
+
+        fila[MAXFILA-vaziosFila] = rand() + 1;
+        printf(BLUE"Conteudo inserido na fila: %d\n"RESET, fila[MAXFILA-vaziosFila]);
+        vaziosFila--;
+
+        pthread_cond_signal(&consumer_c); /* wake up consumer */
+        pthread_mutex_unlock(&mutex); /* release the buffer */
+    }
+    pthread_exit(0);
+}
+
+void* consumer(void *ptr) 
+{
+    for (int i = 1; i <= MAX_PRODUZ; i++) 
+    {
+        sleep(2);
+        pthread_mutex_lock(&mutex); // entrando na zona critica
+        while (vaziosFila == MAXFILA) // espera caso a fila esteja vazia
+        {
+            printf(RED"Fila vazia!\n"RESET);
+            pthread_cond_wait(&consumer_c, &mutex);
+        }
+
+        printf(YELLOW"Conteudo lido da primeira posição da fila: %d\n"RESET, fila[0]);
+        fila[0] = 0; /* consume the item */
+        vaziosFila++;
+
+        for(int j = 0; j < (MAXFILA - 1); j++) fila[j] = fila[j+1];
+
+        pthread_cond_signal(&producer_c); /* wake up producer*/
+        pthread_mutex_unlock(&mutex); /* release the buffer */
+    }
+    pthread_exit(0);
+}
+
+int main() 
+{
+    pthread_t pro, con;
+
+    // Initialize the mutex and condition variables
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&consumer_c, NULL); /* Initialize consumer cond variable */
+    pthread_cond_init(&producer_c, NULL); /* Initialize producer cond variable */
+
+    // Create the threads
+    pthread_create(&con, NULL, consumer, NULL);
+    pthread_create(&pro, NULL, producer, NULL);
+
+    pthread_join(con, NULL);
+    pthread_join(pro, NULL);
+}
+-----------------------------------------------------
+
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex3 ex3.c
+$./ex3
+-----------------------------------------------------
+
+RESULTADO
+
+Está dentro do arquivo "output_da_3.txt", pois foi muito grande, já que foram 64 elementos
+processados/criados.
+-----------------------------------------------------
+
+CONCLUSÃO 
+
+A base desse programa foi o código dado na aula "Capítulo 2 - Gerenciamento de Processos".
+Apenas foram feitas alterações para suportar uma fila ao invés de um buffer único (que era o
+exemplo dado na aula). As saídas foram coloridas para facilitar a leitura:
+- AZUL: entrada
+- AMARELO: saída
+- VERMELHO: warning
+As alterações para a fila foram checagem se a fila está cheia (através de um variável global
+que conta os espaços vazios).
+
+-----------------------------------------------------
+
+Questão 4) Modifique o programa anterior, para que haja 2 (ou mais)
+threads consumidor e 2 (ou mais) threads produtor. O que muda
+em relação ao uso do mutex e da variável de condição?
+
+-----------------------------------------------------
+ARQUIVO ex4.c
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <pthread.h>
+
+#define MAX_PRODUZ 64
+#define MAXFILA 8
+#define NUM_THREADS 2 // possui 2 threads
+
+// cores para output
+#define RED  "\x1b[31m"
+#define YELLOW  "\x1b[33m"
+#define BLUE  "\x1b[34m"
+#define RESET   "\x1b[0m"
+
+pthread_mutex_t mutex; // mutex semaphore 
+pthread_cond_t consumer_c, producer_c; // 2 condition variables for consumer, and producer
+
+int fila[MAXFILA]; // fila de 8 posições
+int vaziosFila = MAXFILA;
+
+void* producer(void *ptr)
+{
+    for (int i = 1; i <= (MAX_PRODUZ/NUM_THREADS); i++) {
+        sleep(1);
+        pthread_mutex_lock(&mutex); // entrando zona critica
+        while(vaziosFila == 0) // espera caso a fila esteja cheia
+        {
+            printf(RED"Fila cheia!\n"RESET);
+            pthread_cond_wait(&producer_c, &mutex);
+        }
+
+        fila[MAXFILA-vaziosFila] = rand() + 1;
+        printf(BLUE"Conteudo inserido na fila: %d\n"RESET, fila[MAXFILA-vaziosFila]);
+        vaziosFila--;
+
+        pthread_cond_signal(&consumer_c); /* wake up consumer */
+        pthread_mutex_unlock(&mutex); /* release the buffer */
+    }
+    pthread_exit(0);
+}
+
+void* consumer(void *ptr) 
+{
+    for (int i = 1; i <= (MAX_PRODUZ/NUM_THREADS); i++) 
+    {
+        sleep(2);
+        pthread_mutex_lock(&mutex); // entrando na zona critica
+        while (vaziosFila == MAXFILA) // espera caso a fila esteja vazia
+        {
+            printf(RED"Fila vazia!\n"RESET);
+            pthread_cond_wait(&consumer_c, &mutex);
+        }
+
+        printf(YELLOW"Conteudo lido da primeira posição da fila: %d\n"RESET, fila[0]);
+        fila[0] = 0; /* consume the item */
+        vaziosFila++;
+
+        for(int j = 0; j < (MAXFILA - 1); j++) fila[j] = fila[j+1];
+
+        pthread_cond_signal(&producer_c); /* wake up producer*/
+        pthread_mutex_unlock(&mutex); /* release the buffer */
+    }
+    pthread_exit(0);
+}
+
+int main() 
+{
+    pthread_t pro, con, pro2, con2;
+
+    // Initialize the mutex and condition variables
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&consumer_c, NULL); /* Initialize consumer cond variable */
+    pthread_cond_init(&producer_c, NULL); /* Initialize producer cond variable */
+
+    // Create the threads
+    pthread_create(&con, NULL, consumer, NULL);
+    pthread_create(&pro, NULL, producer, NULL);
+    pthread_create(&con2, NULL, consumer, NULL);
+    pthread_create(&pro2, NULL, producer, NULL);
+
+    pthread_join(con, NULL);
+    pthread_join(pro, NULL);
+    pthread_join(con2, NULL);
+    pthread_join(pro2, NULL);
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex4 ex4.c
+$./ex4
+
+-----------------------------------------------------
+RESULTADO
+
+Está dentro do arquivo "output_da_4.txt", pois foi muito grande, já que foram 64 elementos
+processados/criados.
+
+-----------------------------------------------------
+CONCLUSÃO
+
+O código se assemelha muito ao código anterior (questão 3), com apenas a diferença
+de que a condição de loop para geração do total de elementos foi dividida sobre a 
+quantidade de threads (ex: no caso de 2 threads, cada uma trabalhará apenas com uma 
+metade  (1/2) do total).
+O mutex não teve nenhuma mudança no código.
+Vale ressaltar que esse programa foi muito mais rápido que o anterior, devido
+a maior quantidade de threads trabalhando.
