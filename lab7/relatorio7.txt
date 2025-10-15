@@ -241,7 +241,7 @@ processados/criados.
 
 CONCLUSÃO 
 
-A base desse programa foi o código dado na aula "Capítulo 2 - Gerenciamento de Processos".
+A base desse programa foi o código dado na aula "Capítulo 2 - Gerenciamento de Processos, Threads e Escalonamento".
 Apenas foram feitas alterações para suportar uma fila ao invés de um buffer único (que era o
 exemplo dado na aula). As saídas foram coloridas para facilitar a leitura:
 - AZUL: entrada
