@@ -7,6 +7,8 @@
 
 #define MAX_PRODUZ 64
 #define MAXFILA 8
+#define NUM_THREADS 2 // possui 2 threads
+
 // cores para output
 #define RED  "\x1b[31m"
 #define YELLOW  "\x1b[33m"
@@ -21,7 +23,7 @@ int vaziosFila = MAXFILA;
 
 void* producer(void *ptr)
 {
-    for (int i = 1; i <= MAX_PRODUZ; i++) {
+    for (int i = 1; i <= (MAX_PRODUZ/NUM_THREADS); i++) {
         sleep(1);
         pthread_mutex_lock(&mutex); // entrando zona critica
         while(vaziosFila == 0) // espera caso a fila esteja cheia
@@ -42,7 +44,7 @@ void* producer(void *ptr)
 
 void* consumer(void *ptr) 
 {
-    for (int i = 1; i <= MAX_PRODUZ; i++) 
+    for (int i = 1; i <= (MAX_PRODUZ/NUM_THREADS); i++) 
     {
         sleep(2);
         pthread_mutex_lock(&mutex); // entrando na zona critica
@@ -66,7 +68,7 @@ void* consumer(void *ptr)
 
 int main() 
 {
-    pthread_t pro, con;
+    pthread_t pro, con, pro2, con2;
 
     // Initialize the mutex and condition variables
     pthread_mutex_init(&mutex, NULL);
@@ -76,7 +78,11 @@ int main()
     // Create the threads
     pthread_create(&con, NULL, consumer, NULL);
     pthread_create(&pro, NULL, producer, NULL);
+    pthread_create(&con2, NULL, consumer, NULL);
+    pthread_create(&pro2, NULL, producer, NULL);
 
     pthread_join(con, NULL);
     pthread_join(pro, NULL);
+    pthread_join(con2, NULL);
+    pthread_join(pro2, NULL);
 }
