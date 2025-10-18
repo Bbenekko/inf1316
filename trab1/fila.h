@@ -1,10 +1,16 @@
 typedef struct no No;
 
-struct no {
-    int pid;
-    No* pProx;
-    No* pAnt;
+typedef struct fila Fila;	
+
+struct fila {
+	struct no* pIni;		// Ponteiro para o primeiro n� da fila
+	struct no* pFin;		// Ponteiro para o �ltimo n� da fila
 };
 
+Fila* criaFila(void);
 
-void insereNaFila(No* pHead);
+void insereFila(Fila* fila, int pid);
+
+void excluiFila(Fila* fila);
+
+void imprimeFila(Fila* fila);
