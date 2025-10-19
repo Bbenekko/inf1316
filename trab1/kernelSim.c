@@ -30,6 +30,7 @@ void configuraFifos(int* fin, int* fout);
 unsigned char retornaIndPid(int vPids[], int pid);
 void atualizaVetor(Info vInfos[], Info infoNova, int vPids[], int pid);
 void iniciaVetor(Info vInfos[]);
+void morteFilho();
 
 //pid do processo atual
 static int pid;
@@ -40,8 +41,15 @@ static int vPids [5];
 //vetor que guarda a quantidade de que cada processo foi parado
 static int vQtdParado [5];
 
+//vetor que guarda a quantidade de que cada processo acionou dispositivo D1
+static int vQtdD1 [5];
+
+//vetor que guarda a quantidade de que cada processo acionou dispositivo D2
+static int vQtdD2 [5];
+
+
 //vetor que que grauda o endereco do vetor de informcacoes na memoria compartilhada
-static int *vInfoComp;
+static Info *vInfoComp;
 
 //vetor que contem as pipes para os processos filhos - servem para receber o PC
 int* vPipes [5][2];
@@ -78,10 +86,7 @@ int main(void)
     vInfoComp = (Info *) shmat (mv, 0, 0);
     iniciaVetor(vInfoComp);
     
-    //vetor que guardara a string do valor do endereco da memoria compartilhada
-    char vEnvio[100];
-
-    configuraFifos(fifoIn, fifoOut);
+    configuraFifos(&fifoIn, &fifoOut);
 
     struct sigaction sa = {0};
     sa.sa_handler = morteFilho;
@@ -97,8 +102,8 @@ int main(void)
         if(!ePrimeiro) //para poder abrir as pipes depois de já ter criado o interControllerSim
         {
             vPids[i-1] = pid;
-            pipe(vPipes[i-1]);
-            vPipesU = vPipes[i-1];
+            pipe(*vPipes[i-1]);
+            vPipesU = *vPipes[i-1];
         } 
         if(pid == 0) //filho
         {
@@ -117,7 +122,7 @@ int main(void)
 
     for(int i = 0; i < 5; i++)
     {
-        close(vPipes[i][1]);
+        close(*(vPipes[i])[1]);
         kill(vPids[i], SIGSTOP);
         insereFila(filaProntos, vPids[i]);
     }
@@ -153,11 +158,13 @@ int main(void)
             infoNova.qtdVezesParado = vQtdParado[j];
 
             char pcStr[10];
-            read(vPipes[j][0], pcStr, 10);
+            read(*(vPipes[j])[0], pcStr, 10);
             int pc = atoi(pcStr);
             infoNova.valorPC = pc;
             fprintf(stderr, "PC atual: %d", pc);
 
+            infoNova.qtdVzsD1 = vQtdD1[j];
+            infoNova.qtdVzsD2 = vQtdD2[j];
 
             atualizaVetor(vInfoComp, infoNova, vPids, pid);
         }
@@ -168,7 +175,7 @@ int main(void)
             vResposta[i] = ch;
         }
 
-        if(vResposta == '0')
+        if(strcmp(vResposta, "0") == 0)
         {
             if (!foramDuasInterrop)
                 pid = excluiFila(filaProntos);
@@ -179,13 +186,13 @@ int main(void)
             }
                 
         }
-        else if (vResposta[i] == "01")
+        else if (strcmp(vResposta, "01") == 0)
             pid = excluiFila(filaD1);
      
-        else if(vResposta == "02")
+        else if(strcmp(vResposta, "02") == 0)
             pid = excluiFila(filaD2);
 
-        else if(vResposta == "012")
+        else if(strcmp(vResposta, "012") == 0)
             pid = excluiFila(filaD1);
 
         if (pid == -1)
@@ -202,11 +209,13 @@ int main(void)
         int j = retornaIndPid(vPids, pid);
         infoNova.qtdVezesParado = vQtdParado[j];
 
-
-        read(vPipes[j][0], pcStr, 10);
+        read(*(vPipes[j])[0], pcStr, 10);
         int pc = atoi(pcStr);
         infoNova.valorPC = pc;
         fprintf(stderr, "PC atual: %d", pc);
+
+        infoNova.qtdVzsD1 = vQtdD1[j];
+        infoNova.qtdVzsD2 = vQtdD2[j];
 
         atualizaVetor(vInfoComp, infoNova, vPids, pid);  
 
@@ -225,7 +234,7 @@ void configuraFifos(int* fin, int* fout)
         if (mkfifo (FIFO_KERNEL_IN, S_IRUSR | S_IWUSR) != 0)
         {
             fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_IN);
-            return -1;
+            exit(-1);
         }
         puts ("FIFO criada com sucesso");
     } 
@@ -233,7 +242,7 @@ void configuraFifos(int* fin, int* fout)
     if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_IN);
-        return -2;
+        exit(-2);
     }
 
     if (access(FIFO_KERNEL_OUT, F_OK) == -1)
@@ -241,7 +250,7 @@ void configuraFifos(int* fin, int* fout)
         if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
         {
             fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
-            return -1;
+            exit(-1);
         }
         puts ("FIFO criada com sucesso");
     }    
@@ -249,7 +258,7 @@ void configuraFifos(int* fin, int* fout)
      if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
-        return -2;
+        exit(-2);
     }
 }
 
@@ -263,6 +272,9 @@ void iniciaVetor(Info vInfos[])
         vInfos[i].estaTerminado = 0;
         vInfos[i].qtdVezesParado = 0;
         vInfos[i].valorPC = 0;
+        vInfos[i].operacao = '\0';
+        vInfos[i].qtdVzsD1 = 0;
+        vInfos[i].qtdVzsD2 = 0;
     }
 }
 
@@ -279,6 +291,9 @@ void atualizaVetor(Info vInfos[], Info infoNova, int vPids[], int pid)
     vInfos[i].estaTerminado = infoNova.estaTerminado;
     vInfos[i].qtdVezesParado = infoNova.qtdVezesParado;
     vInfos[i].valorPC = infoNova.valorPC;
+    vInfos[i].operacao = infoNova.operacao;
+    vInfos[i].qtdVzsD1 = infoNova.qtdVzsD1;
+    vInfos[i].qtdVzsD2 = infoNova.qtdVzsD2;    
 }
 
 unsigned char retornaIndPid(int vPids[], int pid)
@@ -296,11 +311,19 @@ void syscall(int dispositivo, char operacao)
 {
     kill(pid, SIGSTOP);
 
-    if(dispositivo == 1)
-        insereFila(filaD1, pid);
-    else
-        insereFila(filaD2, pid);
+    int j = retornaIndPid(vPids, pid);
 
+    if(dispositivo == 1)
+    {
+        insereFila(filaD1, pid);
+        vQtdD1[j]++;
+    }        
+    else
+    {
+        insereFila(filaD2, pid);
+        vQtdD2[j]++;
+    }
+        
     Info infoNova;
     char pcStr[10];
 
@@ -309,14 +332,17 @@ void syscall(int dispositivo, char operacao)
     infoNova.operacao = operacao;
     infoNova.estaTerminado =  0;
 
-    int j = retornaIndPid(vPids, pid);
+    
     vQtdParado[j]++;
     infoNova.qtdVezesParado = vQtdParado[j];
 
-    read(vPipes[j][0], pcStr, 10);
+    read(*(vPipes[j])[0], pcStr, 10);
     int pc = atoi(pcStr);
     infoNova.valorPC = pc;
 
+    infoNova.qtdVzsD1 = vQtdD1[j];
+    infoNova.qtdVzsD2 = vQtdD2[j];
+    
     fprintf(stderr, "PC atual: %d", pc);
 
     atualizaVetor(vInfoComp, infoNova, vPids, pid); 
@@ -343,12 +369,15 @@ void morteFilho()
     vQtdParado[j]++;
     infoNova.qtdVezesParado = vQtdParado[j];
 
-    read(vPipes[j][0], pcStr, 10);
+    read(*(vPipes[j])[0], pcStr, 10);
     
     int pc = atoi(pcStr);
     infoNova.valorPC = pc;
 
     fprintf(stderr, "PC atual: %d", pc);
+
+    infoNova.qtdVzsD1 = vQtdD1[j];
+    infoNova.qtdVzsD2 = vQtdD2[j];
 
     atualizaVetor(vInfoComp, infoNova, vPids, pid); 
 

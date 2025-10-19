@@ -8,6 +8,8 @@ struct info
     char operacao;
     int qtdVezesParado;
     unsigned char estaTerminado; // 0 - nao ; 1 - sim
+    int qtdVzsD1;
+    int qtdVzsD2;
 };
 
 void syscall(int dispositivo, char operacao);
