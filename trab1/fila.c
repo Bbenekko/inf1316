@@ -9,8 +9,8 @@ struct no {
 };
 
 Fila* criaFila(void) {
-	printf("Dentro do criaFila");
-	printf("%d --- Passei aqui", __LINE__);
+	fprintf(stderr, "Dentro do criaFila\n");
+	fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
 	Fila* fila = (Fila*)malloc(sizeof(Fila));
 
