@@ -7,7 +7,7 @@
 #include <time.h>
 #include <signal.h>
 
-//#include "kernelSim.h"
+#include "kernelSim.h"
 
 #define FIFO_KERNEL_IN "kernelFifoInt"
 #define FIFO_KERNEL_OUT "kernelFifoOut"
@@ -25,18 +25,25 @@ int inKernelFIFO, outKernelFIFO;
 
 void stopHandler(int sinal)
 {
-    char ch;
     write(inKernelFIFO, "stop", 5);
 
-    int segmento1, segmento2, id, id2, pid, status;
+    int segmento, id;
+    __key_t chave = 8751;
 
+    segmento = shmget(chave, sizeof(Info) * 5, S_IRUSR | S_IWUSR);
+    Info vInfo[5] = (Info*)shmat(segmento, 0, 0);
     
-    
-    // TODO: pega da memória compartilhada os dados para o print
     
     printf("#-------------------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-EXECUTANDO-|-D1-|-D2-|-TERMINADO-|\n#-------------------------------------------------------------------------------#");
 
+    for (int i = 0; i < 5; i++)
+    {
+        //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, op, executando, d1, d2, vInfo[i].estaTerminado);
+    }
+
     //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", pc, estado, bloqueado, dispositivo, op, executando, d1, d2, terminado);
+
+    shmdt(vInfo);
 
     pause();
 }
