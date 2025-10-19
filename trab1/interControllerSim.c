@@ -34,14 +34,15 @@ void stopHandler(int sinal)
     Info vInfo[5] = (Info*)shmat(segmento, 0, 0);
     
     
-    printf("#------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|-TERMINADO-|\n#------------------------------------------------------------------#");
+    printf("#------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|-TERMINADO-|\n#------------------------------------------------------------------#\n");
 
     for (int i = 0; i < 5; i++)
     {
-        printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, vInfo[i].operacao, vInfo[i].qtdVzsD1, vInfo[i].qtdVzsD2, vInfo[i].estaTerminado);
+        printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |\n", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, vInfo[i].operacao, vInfo[i].qtdVzsD1, vInfo[i].qtdVzsD2, vInfo[i].estaTerminado);
     }
 
     //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", pc, estado, bloqueado, dispositivo, op, executando, d1, d2, terminado);
+    printf("#------------------------------------------------------------------#\n");
 
     shmdt(vInfo);
 
