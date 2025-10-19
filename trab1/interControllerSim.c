@@ -113,7 +113,7 @@ int main(void)
 
     for (;;)
     {
-        char* msg_to_kernel;
+        char msg_to_kernel[4];
         int index = 0;
         int prob1 = rand()%100 + 1;
         int prob2 = (rand()+1)%100 + 1;
