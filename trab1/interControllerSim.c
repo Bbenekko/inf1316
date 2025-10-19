@@ -72,7 +72,7 @@ int main(void)
 
     for (;;)
     {
-        char* msg_to_kernel = "   ";
+        char* msg_to_kernel;
         int index = 0;
         int prob1 = rand()%100 + 1;
         int prob2 = (rand()+1)%100 + 1;
@@ -98,6 +98,9 @@ int main(void)
             puts("Interrupção do dispotivo 2!");
         };
 
-        write(inKernelFIFO, msg_to_kernel, strlen(msg_to_kernel));
+        msg_to_kernel[index] = '\0';
+        index++;
+
+        write(inKernelFIFO, msg_to_kernel, index);
     }
 }
