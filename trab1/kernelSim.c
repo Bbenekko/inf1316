@@ -18,10 +18,10 @@
 #define FIFO_KERNEL_IN "kernelFifoInt" 
 #endif
 
-/* //mensagens do kernel para o controller
-#ifndef FIFO_KERNEL_OUT  
-#define FIFO_KERNEL_OUT "kernelFifoOut"
-#endif */
+//mensagens do kernel para o controller
+#ifndef FIFO_AX_IN  
+#define FIFO_AX_IN "kernelFifoOut"
+#endif
 
 #define ROPENMODE (O_RDONLY | O_NONBLOCK)
 #define WOPENMODE (O_WRONLY | O_NONBLOCK)
@@ -67,6 +67,10 @@ unsigned char teveChamada = 0;
 //booleano para saber se o filho morreu ou nao:  0 - nao morreu; 1 - morreu
 unsigned char filhoMorreu = 0;
 
+
+//arquivos FIFO
+int fifoIn, fifoaX;
+
 int main(void)
 {    
     fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
@@ -80,9 +84,6 @@ int main(void)
     //booleano para saber se é o primeiro filho que será o interController
     unsigned char ePrimeiro = 1;
 
-    //arquivos FIFO
-    int fifoIn, fifoOut;
-
     //saber se foram enviados 1 ou 1 
     int foramDuasInterrop = 0;
 
@@ -95,7 +96,7 @@ int main(void)
     iniciaVetor(vInfoComp);
 fprintf(stderr, "%d --- Passei aqui\n", __LINE__); */
     
-    configuraFifos(&fifoIn, &fifoOut);
+    configuraFifos(&fifoIn, &fifoaX);
 
     struct sigaction sa = {0};
     sa.sa_handler = morteFilho;
@@ -113,6 +114,8 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
         if(pid == 0) //filho
         {
+            fprintf(stderr, "%d --- i: %d\n", __LINE__, i);
+
             if (i == 0)
             {
                 execle("interControllerSim", "interControllerSim", NULL, (char *)0);
@@ -120,22 +123,12 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
             else
             {
                 vPids[i-1] = pid;
-
-                fprintf(stderr, "%d --- Entrei no filho\n", __LINE__);
-
-                close(fd[0]);
-                fprintf(stderr, "%d --- Saí do close da pipe\n", __LINE__);
-
-                dup2(fd[1], 1);
-                fprintf(stderr, "%d --- Saí da dup\n", __LINE__);
-
                 execle("ax", "ax", NULL, (char*)0);
                 fprintf(stderr, "%d --- depois do execle do filho\n", __LINE__);
             }
         }
     }
 
-    close(fd[1]);
 
     fprintf(stderr, "%d --- Saí do for de criacao de filhos\n", __LINE__);
 
@@ -178,27 +171,6 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
             kill(pid, SIGSTOP);
             insereFila(filaProntos, pid);
 
-            //atualiza vetor de infos na memoria para o processo atual apos ele ser pausado por fim de tempo
-            infoNova.estado = 0;
-            infoNova.dispositivo = 0;
-            infoNova.operacao = '\0';
-            infoNova.estaTerminado =  0;
-
-            int j = retornaIndPid(vPids, pid);
-
-            vQtdParado[j]++;
-            infoNova.qtdVezesParado = vQtdParado[j];
-
-            char pcStr[10];
-            read(fd[0], pcStr, 10);
-            int pc = atoi(pcStr);
-            infoNova.valorPC = pc;
-            fprintf(stderr, "PC atual: %d", pc);
-
-            infoNova.qtdVzsD1 = vQtdD1[j];
-            infoNova.qtdVzsD2 = vQtdD2[j];
-
-            atualizaVetor(vInfoComp, infoNova, vPids, pid);
         }
         if (filhoMorreu) filhoMorreu = 0;
 
@@ -233,16 +205,53 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
         kill(pid, SIGCONT);
 
         //atualiza vetor de infos na memoria para o processo atual apos continuar
-        infoNova.estado = 1;
-        infoNova.dispositivo = 0;
-        infoNova.operacao = '\0';
         infoNova.estaTerminado =  0;
 
         int j = retornaIndPid(vPids, pid);
-        infoNova.qtdVezesParado = vQtdParado[j];
 
-        read(fd[0], pcStr, 10);
-        int pc = atoi(pcStr);
+        char vRetorno[4][10];
+        int numsPid;
+        char operacao;
+        int numDispositvo;
+        int pc;
+        int k = 0;
+        //ordem - Pid - pc - dispositivo - operacao
+        while (read (fifoaX, &ch, sizeof(ch)) > 0)
+        {
+            vRetorno[i][k++] = ch;
+
+            if (ch == '\0')
+            {
+                i++;
+                k = 0;
+            }
+        }
+
+        //read(fd[0], pcStr, 10);
+        numsPid = atoi(vRetorno[0]);
+        pc = atoi(vRetorno[1]);
+        numDispositvo = atoi(vRetorno[2]);
+        operacao = vRetorno[3][0];
+
+        if (numDispositvo)
+        {
+            sysCall(numDispositvo, operacao);
+        }
+
+        if (teveChamada)
+        {
+            infoNova.estado = 0;
+            infoNova.dispositivo = numDispositvo;
+            infoNova.operacao = operacao;
+            vQtdParado[j]++;
+        }
+        else
+        {
+            infoNova.estado = 1;
+            infoNova.dispositivo = 0;
+            infoNova.operacao = '\0';
+        }
+        infoNova.qtdVezesParado = vQtdParado[j];
         infoNova.valorPC = pc;
         fprintf(stderr, "PC atual: %d", pc);
 
@@ -259,7 +268,7 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 }
 
 //realiza a abertura das fifos
-void configuraFifos(int* fin, int* fout)
+void configuraFifos(int* fin, int* faX)
 {
   if (access(FIFO_KERNEL_IN, F_OK) == -1)
     {
@@ -277,21 +286,23 @@ void configuraFifos(int* fin, int* fout)
         exit(-2);
     }
 
-/*     if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+
+
+    if (access(FIFO_AX_IN, F_OK) == -1)
     {
-        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
+        if (mkfifo (FIFO_AX_IN, S_IRUSR | S_IWUSR) != 0)
         {
-            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_AX_IN);
             exit(-1);
         }
         puts ("FIFO criada com sucesso");
-    }    
+    } 
 
-     if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
+    if ((*faX = open (FIFO_AX_IN, ROPENMODE)) < 0)
     {
-        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_AX_IN);
         exit(-2);
-    } */
+    }
 }
 
 //inicia vetor de informacoes da memoria compartilhada
@@ -343,42 +354,6 @@ unsigned char retornaIndPid(int vPids[], int pid)
     return j;
 }
 
-
-
-void morteFilho()
-{
-    Info infoNova;
-    char pcStr[10];
-    int status;
-
-    waitpid(pid, &status, 0);
-
-    filhoMorreu = 1;
-
-    infoNova.estado = 1;
-    infoNova.dispositivo = 0;
-    infoNova.operacao = '\0';
-    infoNova.estaTerminado =  1;
-
-    int j = retornaIndPid(vPids, pid);
-    vQtdParado[j]++;
-    infoNova.qtdVezesParado = vQtdParado[j];
-
-    read(fd[0], pcStr, 10);
-    
-    int pc = atoi(pcStr);
-    infoNova.valorPC = pc;
-
-    fprintf(stderr, "PC atual: %d", pc);
-
-    infoNova.qtdVzsD1 = vQtdD1[j];
-    infoNova.qtdVzsD2 = vQtdD2[j];
-
-    atualizaVetor(vInfoComp, infoNova, vPids, pid); 
-
-    pid = -1;
-}
-
 void sysCall(int dispositivo, char operacao)
 {
     kill(pid, SIGSTOP);
@@ -395,29 +370,68 @@ void sysCall(int dispositivo, char operacao)
         insereFila(filaD2, pid);
         vQtdD2[j]++;
     }
-        
+
+    teveChamada = 1;
+}
+
+void morteFilho()
+{
     Info infoNova;
     char pcStr[10];
+    int status;
 
-    infoNova.estado = 0;
-    infoNova.dispositivo = dispositivo;
-    infoNova.operacao = operacao;
-    infoNova.estaTerminado =  0;
+    waitpid(pid, &status, 0);
+
+    filhoMorreu = 1;
+
+    infoNova.estado = 1;
+    infoNova.dispositivo = 0;
+    infoNova.operacao = '\0';
+    infoNova.estaTerminado =  1;
+
+    int k = retornaIndPid(vPids, pid);
+    vQtdParado[k]++;
+    infoNova.qtdVezesParado = vQtdParado[k];
+
+    //read(fd[0], pcStr, 10);
+
+    char ch;
+    char vRetorno[4][10];
+    int numsPid;
+    char operacao;
+    int numDispositvo;
+    int pc;
+    int i = 0;
+    int j = 0;
+
+    //ordem - Pid - pc - dispositivo - operacao
+    while (read (fifoaX, &ch, sizeof(ch)) > 0)
+    {
+        vRetorno[i][j++] = ch;
+
+        if (ch == '\0')
+        {
+            i++;
+            j = 0;
+        }
+    }
+
+    //read(fd[0], pcStr, 10);
+    numsPid = atoi(vRetorno[0]);
+    pc = atoi(vRetorno[1]);
+    numDispositvo = atoi(vRetorno[2]);
+    operacao = vRetorno[3][0];
 
     
-    vQtdParado[j]++;
-    infoNova.qtdVezesParado = vQtdParado[j];
-
-    read(fd[0], pcStr, 10);
-    int pc = atoi(pcStr);
+    pc = atoi(pcStr);
     infoNova.valorPC = pc;
 
-    infoNova.qtdVzsD1 = vQtdD1[j];
-    infoNova.qtdVzsD2 = vQtdD2[j];
-    
     fprintf(stderr, "PC atual: %d", pc);
+
+    infoNova.qtdVzsD1 = vQtdD1[k];
+    infoNova.qtdVzsD2 = vQtdD2[k];
 
     atualizaVetor(vInfoComp, infoNova, vPids, pid); 
 
-    teveChamada = 1;
+    pid = -1;
 }
