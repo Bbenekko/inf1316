@@ -166,7 +166,11 @@ int main(void)
             if (!foramDuasInterrop)
                 pid = excluiFila(filaProntos);
             else
+            {
                 pid = excluiFila(filaD2);
+                foramDuasInterrop = 0;
+            }
+                
         }
         else if (vResposta[i] == "01")
             pid = excluiFila(filaD1);
