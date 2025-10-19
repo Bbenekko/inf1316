@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -23,22 +26,38 @@
 
 int inKernelFIFO, outKernelFIFO;
 
+void iniciaVetor(Info vInfos[])
+{
+    for(int i = 0; i < 5; i++)
+    {
+        vInfos[i].dispositivo = 0;
+        vInfos[i].estado = 0;
+        vInfos[i].estaTerminado = 0;
+        vInfos[i].qtdVezesParado = 0;
+        vInfos[i].valorPC = 0;
+        vInfos[i].operacao = '\0';
+        vInfos[i].qtdVzsD1 = 0;
+        vInfos[i].qtdVzsD2 = 0;
+    }
+}
+
 void stopHandler(int sinal)
 {
     write(inKernelFIFO, "stop", 5);
 
-    int segmento, id;
+    int segmento;
     __key_t chave = 8751;
 
     segmento = shmget(chave, sizeof(Info) * 5, S_IRUSR | S_IWUSR);
-    Info vInfo[5] = (Info*)shmat(segmento, 0, 0);
+    Info* vInfo = (Info*)shmat(segmento, 0, 0);
+    iniciaVetor(vInfo);
     
     
     printf("#------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|-TERMINADO-|\n#------------------------------------------------------------------#\n");
 
     for (int i = 0; i < 5; i++)
     {
-        printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |\n", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, vInfo[i].operacao, vInfo[i].qtdVzsD1, vInfo[i].qtdVzsD2, vInfo[i].estaTerminado);
+        printf("| %d |   %d   |   %d   |  %d  | %d | %d | %d |   %d   |\n", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, vInfo[i].operacao, vInfo[i].qtdVzsD1, vInfo[i].qtdVzsD2, vInfo[i].estaTerminado);
     }
 
     //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", pc, estado, bloqueado, dispositivo, op, executando, d1, d2, terminado);
@@ -52,6 +71,8 @@ void stopHandler(int sinal)
 int main(void)
 {
     void (*p)(int); 
+
+    printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
 
     // Criação e abertura das FIFOs (comunicação entre kernel e controller)
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
