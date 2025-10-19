@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 
 #define FIFO_KERNEL_IN "kernelFifoInt"
 #define FIFO_KERNEL_OUT "kernelFifoOut"
@@ -21,8 +21,18 @@
 
 int inKernelFIFO, outKernelFIFO;
 
+void quitHandler(int sinal)
+{
+    char ch;
+    write(inKernelFIFO, "stop", 5);
+    while (read (outKernelFIFO, &ch, sizeof(ch)) == 1 && ch != '\n') putchar(ch);
+    kill(SIGSTOP);
+}
+
 int main(void)
 {
+    void (*p)(int); 
+
     // Criação e abertura das FIFOs (comunicação entre kernel e controller)
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
     {
@@ -58,30 +68,35 @@ int main(void)
     time_t t;
     srand((unsigned) time(&t));
 
+    p = signal(SIGQUIT, quitHandler);
+
     for (;;)
     {
-        char msg_to_kernel[3];
+        char* msg_to_kernel = "   ";
+        int index = 0;
         int prob1 = rand()%100 + 1;
         int prob2 = (rand()+1)%100 + 1;
         usleep(TIMESLICE);
 
         //IRQ0
-        strcat(msg_to_kernel, '0');
+        msg_to_kernel[index] = '0';
+        index++;
 
         //IRQ1
         if (prob1 <= 10) 
         {
-            strcat(msg_to_kernel, '1');
+            msg_to_kernel[index] = '1';
+            index++;
             puts("Interrupção do dispositivo 1!");
         }
 
         //IRQ2
         if (prob2 <= 5) 
         {
-            strcat(msg_to_kernel, '2');
+            msg_to_kernel[index] = '2';
+            index++;
             puts("Interrupção do dispotivo 2!");
         };
-
 
         write(inKernelFIFO, msg_to_kernel, strlen(msg_to_kernel));
     }
