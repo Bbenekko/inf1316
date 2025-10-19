@@ -18,10 +18,10 @@
 #define FIFO_KERNEL_IN "kernelFifoInt" 
 #endif
 
-//mensagens do kernel para o controller
+/* //mensagens do kernel para o controller
 #ifndef FIFO_KERNEL_OUT  
 #define FIFO_KERNEL_OUT "kernelFifoOut"
-#endif
+#endif */
 
 #define ROPENMODE (O_RDONLY | O_NONBLOCK)
 #define WOPENMODE (O_WRONLY | O_NONBLOCK)
@@ -67,9 +67,13 @@ unsigned char filhoMorreu = 0;
 
 int main(void)
 {    
+    printf("%d --- Passei aqui", __LINE__);
+
     filaProntos = criaFila();
     filaD1 = criaFila();
     filaD2 = criaFila();
+
+    printf("%d --- Passei aqui", __LINE__);
 
     //booleano para saber se é o primeiro filho que será o interController
     unsigned char ePrimeiro = 1;
@@ -84,7 +88,10 @@ int main(void)
     __key_t chave = 8751;
     int mv = shmget (chave, sizeof (Info) * 5, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
     vInfoComp = (Info *) shmat (mv, 0, 0);
+printf("%d --- Passei aqui", __LINE__);
+
     iniciaVetor(vInfoComp);
+printf("%d --- Passei aqui", __LINE__);
     
     configuraFifos(&fifoIn, &fifoOut);
 
@@ -94,6 +101,7 @@ int main(void)
     sigaction(SIGCHLD, &sa, NULL);
 
     int* vPipesU;
+printf("%d --- Passei aqui", __LINE__);
 
     //for para criacao dos filhos
     for(int i = 0; i < 6; i++)
@@ -245,7 +253,7 @@ void configuraFifos(int* fin, int* fout)
         exit(-2);
     }
 
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+/*     if (access(FIFO_KERNEL_OUT, F_OK) == -1)
     {
         if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
         {
@@ -259,7 +267,7 @@ void configuraFifos(int* fin, int* fout)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
         exit(-2);
-    }
+    } */
 }
 
 //inicia vetor de informacoes da memoria compartilhada
@@ -307,7 +315,7 @@ unsigned char retornaIndPid(int vPids[], int pid)
     return j;
 }
 
-void syscall(int dispositivo, char operacao)
+void sysCall(int dispositivo, char operacao)
 {
     kill(pid, SIGSTOP);
 

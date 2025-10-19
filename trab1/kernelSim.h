@@ -12,4 +12,4 @@ struct info
     int qtdVzsD2;
 };
 
-void syscall(int dispositivo, char operacao);
+void sysCall(int dispositivo, char operacao);

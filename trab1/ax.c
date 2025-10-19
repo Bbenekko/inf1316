@@ -20,13 +20,13 @@ int main(void)
     while (PC < MAX) {
         sleep(0.1);
         int d = rand()%100 +1;
-        if (d  < 15) { // generate a random syscall
+        if (d  < 15) { // generate a random sysCall
             if (d % 2) Dx = D1;
             else Dx= D2;
             if (d % 3 == 1) Op = R;
             else if (d % 3 == 1) Op = W;
             else Op = X;
-            syscall (Dx, Op);
+            sysCall (Dx, Op);
         }
         sleep(0.1);
     }
