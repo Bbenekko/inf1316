@@ -13,7 +13,7 @@
 #include "kernelSim.h"
 
 #define FIFO_KERNEL_IN "kernelFifoInt"
-#define FIFO_KERNEL_OUT "kernelFifoOut"
+//#define FIFO_KERNEL_OUT "kernelFifoOut"
 
 #define TIMESLICE 500
 
@@ -91,7 +91,7 @@ int main(void)
         return -2;
     }
 
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+    /* if (access(FIFO_KERNEL_OUT, F_OK) == -1)
     {
         if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
         {
@@ -104,13 +104,7 @@ int main(void)
     {   
         fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
         return -2;
-    }
-
-    //scrapped a princípio
-/*     char buffer[11];
-    puts ("Começando a ler...");
-    read (outKernelFIFO, buffer, 11);
-    puts ("Fim da leitura"); */
+    } */
 
     time_t t;
     srand((unsigned) time(&t));
