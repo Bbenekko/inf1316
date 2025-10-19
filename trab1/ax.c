@@ -16,14 +16,10 @@
 #define D1 1
 #define D2 0
 
-#define R 0
-#define W 1
-#define X 2
-
 int PC = 0;
 int MAX = 40;
 int Dx;
-int Op;
+char Op;
 
 int outAxFIFO;
 
@@ -75,9 +71,9 @@ int main(void)
         if (d  < 15) { // generate a random sysCall
             if (d % 2) Dx = D1;
             else Dx= D2;
-            if (d % 3 == 1) Op = R;
-            else if (d % 3 == 1) Op = W;
-            else Op = X;
+            if (d % 3 == 1) Op = 'r';
+            else if (d % 3 == 1) Op = 'w';
+            else Op = 'x';
             sysCall (Dx, Op);
         }
         else sysCall(0, '\n');
