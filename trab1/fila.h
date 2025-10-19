@@ -11,6 +11,6 @@ Fila* criaFila(void);
 
 void insereFila(Fila* fila, int pid);
 
-void excluiFila(Fila* fila);
+int excluiFila(Fila* fila);
 
 void imprimeFila(Fila* fila);

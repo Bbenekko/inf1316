@@ -1,5 +1,6 @@
 #include "fila.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 struct no {
     int pid;
@@ -47,17 +48,21 @@ void insereFila(Fila* fila, int pid) {
 	}
 }
 
-void excluiFila(Fila* fila) {
+int excluiFila(Fila* fila) {
 
 	if (!(fila->pIni)) {	// Se pIni == NULL, a fila est� vazia. Logo, n�o h� remo��es a fazer
 		printf("\n\nAviso: Fila vazia.\n\n");
-		return;
+		return -1;
 	}
 
 	No* carregador = fila->pIni;	// Guarda endere�o do n� a ser removido do in�cio
 	fila->pIni = fila->pIni->pProx;	// Define novo primeiro da fila
 
+    int pid = carregador->pid;
+
 	free(carregador);				// Libera mem�ria do removido
+
+    return pid;
 }
 
 void imprimeFila(Fila* fila) {
@@ -71,3 +76,5 @@ void imprimeFila(Fila* fila) {
 
 	printf("\n");
 }
+
+
