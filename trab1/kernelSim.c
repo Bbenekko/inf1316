@@ -378,3 +378,46 @@ void morteFilho()
 
     pid = -1;
 }
+
+void sysCall(int dispositivo, char operacao)
+{
+    kill(pid, SIGSTOP);
+
+    int j = retornaIndPid(vPids, pid);
+
+    if(dispositivo == 1)
+    {
+        insereFila(filaD1, pid);
+        vQtdD1[j]++;
+    }        
+    else
+    {
+        insereFila(filaD2, pid);
+        vQtdD2[j]++;
+    }
+        
+    Info infoNova;
+    char pcStr[10];
+
+    infoNova.estado = 0;
+    infoNova.dispositivo = dispositivo;
+    infoNova.operacao = operacao;
+    infoNova.estaTerminado =  0;
+
+    
+    vQtdParado[j]++;
+    infoNova.qtdVezesParado = vQtdParado[j];
+
+    read(fd[0], pcStr, 10);
+    int pc = atoi(pcStr);
+    infoNova.valorPC = pc;
+
+    infoNova.qtdVzsD1 = vQtdD1[j];
+    infoNova.qtdVzsD2 = vQtdD2[j];
+    
+    fprintf(stderr, "PC atual: %d", pc);
+
+    atualizaVetor(vInfoComp, infoNova, vPids, pid); 
+
+    teveChamada = 1;
+}
