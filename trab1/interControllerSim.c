@@ -85,7 +85,7 @@ int main(void)
     }
     puts (BLUE"Abrindo FIFO de entrada do servidor!"RESET);
     puts (YELLOW"Aguardando iniciação da kernel..."RESET);
-    if ((inKernelFIFO = open (FIFO_KERNEL_IN, O_RDONLY)) < 0)
+    if ((inKernelFIFO = open (FIFO_KERNEL_IN, O_WRONLY)) < 0)
     {
         fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_IN);
         return -2;
