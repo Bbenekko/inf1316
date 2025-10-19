@@ -73,7 +73,8 @@ int main(void)
     int foramDuasInterrop = 0;
 
     //area da memoria compartilhada para compartilhar os status dos processos
-    int mv = shmget (IPC_PRIVATE, sizeof (Info) * 5, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+    __key_t chave = 8751;
+    int mv = shmget (chave, sizeof (Info) * 5, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
     vInfoComp = (Info *) shmat (mv, 0, 0);
     iniciaVetor(vInfoComp);
     
@@ -120,10 +121,6 @@ int main(void)
         kill(vPids[i], SIGSTOP);
         insereFila(filaProntos, vPids[i]);
     }
-
-    //escrever na fifo o endereco da memmoria compartilhada que esta o vetor de informacoes
-    sprintf(vEnvio, "%d", vInfoComp);
-    write(fifoOut, vEnvio, strlen(vInfoComp) + 1);
 
     ePrimeiro = 1;
 
