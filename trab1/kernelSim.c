@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -8,6 +9,7 @@
 #include "kernelSim.h"
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/wait.h>
 
 #include "fila.h"
 
@@ -49,6 +51,11 @@ Fila* filaProntos;
 Fila* filaD1;
 Fila* filaD2;
 
+//booleano para saber se houver chamada de sistema ou não durante o processo: 0 - nao teve; 1 - teve
+unsigned char teveChamada = 0;
+
+//booleano para saber se o filho morreu ou nao:  0 - nao morreu; 1 - morreu
+unsigned char filhoMorreu = 0;
 
 int main(void)
 {    
@@ -73,18 +80,20 @@ int main(void)
     //vetor que guardara a string do valor do endereco da memoria compartilhada
     char vEnvio[100];
 
-    //booleano para saber se houver chamada de sistema ou não durante o processo: 0 - nao teve; 1 - teve
-    unsigned char teveChamada = 0;
-
     configuraFifos(fifoIn, fifoOut);
 
-    int* vPipesU = vPipes;
+    struct sigaction sa = {0};
+    sa.sa_handler = morteFilho;
+    sa.sa_flags   = SA_NOCLDSTOP;
+    sigaction(SIGCHLD, &sa, NULL);
+
+    int* vPipesU;
 
     //for para criacao dos filhos
     for(int i = 0; i < 6; i++)
     {
         pid = fork();
-        if(!ePrimeiro) //para poder colocar as informacoes nos vetores depois de já ter criado o interControllerSim
+        if(!ePrimeiro) //para poder abrir as pipes depois de já ter criado o interControllerSim
         {
             vPids[i-1] = pid;
             pipe(vPipes[i-1]);
@@ -124,13 +133,13 @@ int main(void)
         char ch;
         unsigned int i = 0;
         Info infoNova;
-        char frase[10];
+        char pcStr[10];
 
         if(ePrimeiro)
         {
             ePrimeiro = 0;
         }
-        else if (!teveChamada)
+        else if (!teveChamada && !filhoMorreu)
         {
             kill(pid, SIGSTOP);
             insereFila(filaProntos, pid);
@@ -146,15 +155,16 @@ int main(void)
             vQtdParado[j]++;
             infoNova.qtdVezesParado = vQtdParado[j];
 
-            char frase[10];
-            read(vPipes[j][0], frase, 10);
-            int pc = atoi(frase);
+            char pcStr[10];
+            read(vPipes[j][0], pcStr, 10);
+            int pc = atoi(pcStr);
             infoNova.valorPC = pc;
             fprintf(stderr, "PC atual: %d", pc);
 
 
             atualizaVetor(vInfoComp, infoNova, vPids, pid);
         }
+        if (filhoMorreu) filhoMorreu = 0;
 
         while (read (fifoIn, &ch, sizeof(ch)) > 0)
         {
@@ -196,11 +206,10 @@ int main(void)
         infoNova.qtdVezesParado = vQtdParado[j];
 
 
-        read(vPipes[j][0], frase, 10);
-        int pc = atoi(frase);
+        read(vPipes[j][0], pcStr, 10);
+        int pc = atoi(pcStr);
         infoNova.valorPC = pc;
         fprintf(stderr, "PC atual: %d", pc);
-
 
         atualizaVetor(vInfoComp, infoNova, vPids, pid);  
 
@@ -292,12 +301,11 @@ void syscall(int dispositivo, char operacao)
 
     if(dispositivo == 1)
         insereFila(filaD1, pid);
-    
     else
         insereFila(filaD2, pid);
 
     Info infoNova;
-    char frase[10];
+    char pcStr[10];
 
     infoNova.estado = 0;
     infoNova.dispositivo = dispositivo;
@@ -308,11 +316,44 @@ void syscall(int dispositivo, char operacao)
     vQtdParado[j]++;
     infoNova.qtdVezesParado = vQtdParado[j];
 
-    read(vPipes[j][0], frase, 10);
-    int pc = atoi(frase);
+    read(vPipes[j][0], pcStr, 10);
+    int pc = atoi(pcStr);
     infoNova.valorPC = pc;
 
     fprintf(stderr, "PC atual: %d", pc);
 
     atualizaVetor(vInfoComp, infoNova, vPids, pid); 
+
+    teveChamada = 1;
+}
+
+void morteFilho()
+{
+    Info infoNova;
+    char pcStr[10];
+    int status;
+
+    waitpid(pid, &status, 0);
+
+    filhoMorreu = 1;
+
+    infoNova.estado = 1;
+    infoNova.dispositivo = 0;
+    infoNova.operacao = '\0';
+    infoNova.estaTerminado =  1;
+
+    int j = retornaIndPid(vPids, pid);
+    vQtdParado[j]++;
+    infoNova.qtdVezesParado = vQtdParado[j];
+
+    read(vPipes[j][0], pcStr, 10);
+    
+    int pc = atoi(pcStr);
+    infoNova.valorPC = pc;
+
+    fprintf(stderr, "PC atual: %d", pc);
+
+    atualizaVetor(vInfoComp, infoNova, vPids, pid); 
+
+    pid = -1;
 }
