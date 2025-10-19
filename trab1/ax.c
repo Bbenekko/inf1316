@@ -54,7 +54,7 @@ int main(void)
             return -1;
         }
     }
-    if ((outAxFIFO = open (FIFO_AX_OUT, O_RDONLY)) < 0)
+    if ((outAxFIFO = open (FIFO_AX_OUT, O_WRONLY)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_AX_OUT);
         return -2;
