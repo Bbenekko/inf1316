@@ -40,6 +40,13 @@ static int vPids [5];
 //vetor que guarda a quantidade de que cada processo foi parado
 static int vQtdParado [5];
 
+//vetor que guarda a quantidade de que cada processo acionou dispositivo D1
+static int vQtdD1 [5];
+
+//vetor que guarda a quantidade de que cada processo acionou dispositivo D2
+static int vQtdD2 [5];
+
+
 //vetor que que grauda o endereco do vetor de informcacoes na memoria compartilhada
 static int *vInfoComp;
 
@@ -158,6 +165,8 @@ int main(void)
             infoNova.valorPC = pc;
             fprintf(stderr, "PC atual: %d", pc);
 
+            infoNova.qtdVzsD1 = vQtdD1[j];
+            infoNova.qtdVzsD2 = vQtdD2[j];
 
             atualizaVetor(vInfoComp, infoNova, vPids, pid);
         }
@@ -202,11 +211,13 @@ int main(void)
         int j = retornaIndPid(vPids, pid);
         infoNova.qtdVezesParado = vQtdParado[j];
 
-
         read(vPipes[j][0], pcStr, 10);
         int pc = atoi(pcStr);
         infoNova.valorPC = pc;
         fprintf(stderr, "PC atual: %d", pc);
+
+        infoNova.qtdVzsD1 = vQtdD1[j];
+        infoNova.qtdVzsD2 = vQtdD2[j];
 
         atualizaVetor(vInfoComp, infoNova, vPids, pid);  
 
@@ -263,6 +274,9 @@ void iniciaVetor(Info vInfos[])
         vInfos[i].estaTerminado = 0;
         vInfos[i].qtdVezesParado = 0;
         vInfos[i].valorPC = 0;
+        vInfos[i].operacao = '\0';
+        vInfos[i].qtdVzsD1 = 0;
+        vInfos[i].qtdVzsD2 = 0;
     }
 }
 
@@ -279,6 +293,9 @@ void atualizaVetor(Info vInfos[], Info infoNova, int vPids[], int pid)
     vInfos[i].estaTerminado = infoNova.estaTerminado;
     vInfos[i].qtdVezesParado = infoNova.qtdVezesParado;
     vInfos[i].valorPC = infoNova.valorPC;
+    vInfos[i].operacao = infoNova.operacao;
+    vInfos[i].qtdVzsD1 = infoNova.qtdVzsD1;
+    vInfos[i].qtdVzsD2 = infoNova.qtdVzsD2;    
 }
 
 unsigned char retornaIndPid(int vPids[], int pid)
@@ -296,11 +313,19 @@ void syscall(int dispositivo, char operacao)
 {
     kill(pid, SIGSTOP);
 
-    if(dispositivo == 1)
-        insereFila(filaD1, pid);
-    else
-        insereFila(filaD2, pid);
+    int j = retornaIndPid(vPids, pid);
 
+    if(dispositivo == 1)
+    {
+        insereFila(filaD1, pid);
+        vQtdD1[j]++;
+    }        
+    else
+    {
+        insereFila(filaD2, pid);
+        vQtdD2[j]++;
+    }
+        
     Info infoNova;
     char pcStr[10];
 
@@ -309,7 +334,7 @@ void syscall(int dispositivo, char operacao)
     infoNova.operacao = operacao;
     infoNova.estaTerminado =  0;
 
-    int j = retornaIndPid(vPids, pid);
+    
     vQtdParado[j]++;
     infoNova.qtdVezesParado = vQtdParado[j];
 
@@ -317,6 +342,9 @@ void syscall(int dispositivo, char operacao)
     int pc = atoi(pcStr);
     infoNova.valorPC = pc;
 
+    infoNova.qtdVzsD1 = vQtdD1[j];
+    infoNova.qtdVzsD2 = vQtdD2[j];
+    
     fprintf(stderr, "PC atual: %d", pc);
 
     atualizaVetor(vInfoComp, infoNova, vPids, pid); 
@@ -349,6 +377,9 @@ void morteFilho()
     infoNova.valorPC = pc;
 
     fprintf(stderr, "PC atual: %d", pc);
+
+    infoNova.qtdVzsD1 = vQtdD1[j];
+    infoNova.qtdVzsD2 = vQtdD2[j];
 
     atualizaVetor(vInfoComp, infoNova, vPids, pid); 
 
