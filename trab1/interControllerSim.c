@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+=======
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -21,12 +23,12 @@
 
 int inKernelFIFO, outKernelFIFO;
 
-void quitHandler(int sinal)
+void stopHandler(int sinal)
 {
     char ch;
     write(inKernelFIFO, "stop", 5);
     while (read (outKernelFIFO, &ch, sizeof(ch)) == 1 && ch != '\n') putchar(ch);
-    kill(SIGSTOP);
+    pause();
 }
 
 int main(void)
@@ -68,7 +70,7 @@ int main(void)
     time_t t;
     srand((unsigned) time(&t));
 
-    p = signal(SIGQUIT, quitHandler);
+    p = signal(SIGQUIT, stopHandler);
 
     for (;;)
     {
@@ -83,7 +85,7 @@ int main(void)
         index++;
 
         //IRQ1
-        if (prob1 <= 10) 
+        if (prob1 <= 20) 
         {
             msg_to_kernel[index] = '1';
             index++;
@@ -91,7 +93,7 @@ int main(void)
         }
 
         //IRQ2
-        if (prob2 <= 5) 
+        if (prob2 <= 1) 
         {
             msg_to_kernel[index] = '2';
             index++;
@@ -104,3 +106,4 @@ int main(void)
         write(inKernelFIFO, msg_to_kernel, index);
     }
 }
+>>>>>>> stash
