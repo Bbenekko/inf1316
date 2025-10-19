@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -8,6 +6,8 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
+
+//#include "kernelSim.h"
 
 #define FIFO_KERNEL_IN "kernelFifoInt"
 #define FIFO_KERNEL_OUT "kernelFifoOut"
@@ -27,7 +27,17 @@ void stopHandler(int sinal)
 {
     char ch;
     write(inKernelFIFO, "stop", 5);
-    while (read (outKernelFIFO, &ch, sizeof(ch)) == 1 && ch != '\n') putchar(ch);
+
+    int segmento1, segmento2, id, id2, pid, status;
+
+    
+    
+    // TODO: pega da memória compartilhada os dados para o print
+    
+    printf("#-------------------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-EXECUTANDO-|-D1-|-D2-|-TERMINADO-|\n#-------------------------------------------------------------------------------#");
+
+    //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", pc, estado, bloqueado, dispositivo, op, executando, d1, d2, terminado);
+
     pause();
 }
 
@@ -66,6 +76,12 @@ int main(void)
         fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
         return -2;
     }
+
+    //scrapped a princípio
+/*     char buffer[11];
+    puts ("Começando a ler...");
+    read (outKernelFIFO, buffer, 11);
+    puts ("Fim da leitura"); */
 
     time_t t;
     srand((unsigned) time(&t));
@@ -106,4 +122,3 @@ int main(void)
         write(inKernelFIFO, msg_to_kernel, index);
     }
 }
->>>>>>> stash

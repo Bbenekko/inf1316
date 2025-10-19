@@ -1,4 +1,3 @@
-#include <signal.h>
 #include <stdio.h>
 
 #define D1 1
@@ -19,7 +18,7 @@ int Op;
 int main(void)
 {
     while (PC < MAX) {
-        sleep(0.5);
+        sleep(0.1);
         int d = rand()%100 +1;
         if (d  < 15) { // generate a random syscall
             if (d % 2) Dx = D1;
@@ -29,17 +28,6 @@ int main(void)
             else Op = X;
             syscall (Dx, Op);
         }
-        sleep(0.5);
+        sleep(0.1);
     }
-}
-
-void stopHandler(int signal)
-{
-
-    printf("%d", PC);
-}
-
-void contHandler(int signal)
-{
-
 }
