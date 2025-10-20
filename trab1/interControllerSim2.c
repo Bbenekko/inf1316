@@ -30,7 +30,7 @@ int interrupcao = 0;
 
 void stopHandler(int signal)
 {
-    printf("\nController parado!!!\n");
+    printf(YELLOW"\nController parado!!!\n"RESET);
     interrupcao = 1;
 }
 
@@ -39,7 +39,7 @@ void paraPrograma()
     char aux = '3';
     write(inKernelFIFO, &aux, 1);
 
-    FILE* fifo_text = fopen(outKernelFIFO, "r");
+    FILE* fifo_text = fopen(FIFO_KERNEL_OUT, "r");
     if (fifo_text == NULL) 
     {
         perror(RED"Erro na criação do fluxo de arquivo da FIFO!"RESET);
@@ -61,6 +61,7 @@ void paraPrograma()
         sscanf(buffer, "%d %d %d %c %d %d", &pc, &estado, &dispositivo, &op, &d1, &d2);
         printf("| %d |    %d    |    %d    | %c | %d | %d |\n", pc, estado, dispositivo, op, d1, d2);
     }
+    fclose(fifo_text);
 
     pause();
     interrupcao = 0;
@@ -68,11 +69,30 @@ void paraPrograma()
 
 int main(void)
 {
-    signal(SIGINT, SIG_IGN);
+    //signal(SIGINT, SIG_IGN);
+    signal(SIGINT, stopHandler);
 
     printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
 
     // Criação e abertura das FIFOs (comunicação entre kernel e controller)
+
+    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+    {
+        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, RED"Erro ao criar FIFO %s\n"RESET, FIFO_KERNEL_OUT);
+            return -1;
+        }
+    }
+    puts (BLUE"Abrindo FIFO de saída do servidor!"RESET);
+    puts (YELLOW"Aguardando iniciação da kernel..."RESET);
+
+    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
+    {
+        fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
+        return -2;
+    }
+
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
     {
         if (mkfifo (FIFO_KERNEL_IN, S_IRUSR | S_IWUSR) != 0)
@@ -86,22 +106,6 @@ int main(void)
     if ((inKernelFIFO = open (FIFO_KERNEL_IN, O_WRONLY)) < 0)
     {
         fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_IN);
-        return -2;
-    }
-
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, RED"Erro ao criar FIFO %s\n"RESET, FIFO_KERNEL_OUT);
-            return -1;
-        }
-    }
-    puts (BLUE"Abrindo FIFO de saída do servidor!"RESET);
-    puts (YELLOW"Aguardando iniciação da kernel..."RESET);
-    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
-    {
-        fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
         return -2;
     }
 

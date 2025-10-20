@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define FIFO_AX_OUT "axFifoOut"
 

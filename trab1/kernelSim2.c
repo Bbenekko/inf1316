@@ -23,8 +23,11 @@
 #define FIFO_AX_IN "axFifoOut"
 #endif
 
-#define ROPENMODE (O_RDONLY | O_NONBLOCK)
-#define WOPENMODE (O_WRONLY | O_NONBLOCK)
+#define ROPENMODE (O_RDONLY)
+#define WOPENMODE (O_WRONLY)
+
+//#define ROPENMODE (O_RDONLY | O_NONBLOCK)
+//#define WOPENMODE (O_WRONLY | O_NONBLOCK)
 
 //vetor com Id dos Pids
 Info vPids [5];
@@ -51,14 +54,14 @@ void stopHandler(int num);
 int main()
 {
 
-    signal(SIGINT, stopHandler);
+    //signal(SIGINT, stopHandler);
     configuraFifos(&fifoRq, &fifoSc, &fifoOut);
     iniciaVetor(vPids);
 
     filaD1 = criaFila();
     filaD2 = criaFila();
 
-    pidInterCont = fork();
+    /* pidInterCont = fork();
 
     if(!pidInterCont)
     {
@@ -67,13 +70,14 @@ int main()
     }
     else{
         kill(pidInterCont, SIGSTOP);
-    }
+    } */
 
     for(int i = 0; i < 5; i++)
     {
         int pid = fork();
         if(pid == 0) //filho
         {           
+            printf("Executando filho!\n");
             execle("ax2", "ax2", NULL, (char*)0);
             exit(1);            
         }
@@ -176,7 +180,7 @@ int main()
                 {
                     kill(vPids[i].pid, SIGSTOP);
                     char buffer[30];
-                    int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD2);
+                    int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD1);
                     if (write(fifoOut, buffer, len) == -1) 
                     {
                         perror("Erro ao enviar dados pela FIFO de saída da kernel!");
@@ -229,6 +233,23 @@ int main()
 //realiza a abertura das fifos
 void configuraFifos(int* fin, int* faX, int* fout)
 {
+    unlink(FIFO_KERNEL_OUT);
+    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+    {
+        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
+            exit(-1);
+        }
+        puts ("FIFO KERNEL OUT criada com sucesso");
+    } 
+
+    if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
+        exit(-2);
+    }
+
     unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
     {
@@ -237,7 +258,7 @@ void configuraFifos(int* fin, int* faX, int* fout)
             fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_IN);
             exit(-1);
         }
-        puts ("FIFO criada com sucesso");
+        puts ("FIFO KERNEL IN criada com sucesso");
     } 
 
     if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE)) < 0)
@@ -255,29 +276,12 @@ void configuraFifos(int* fin, int* faX, int* fout)
             fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_AX_IN);
             exit(-1);
         }
-        puts ("FIFO criada com sucesso");
+        puts ("FIFO AX criada com sucesso");
     } 
 
-    if ((*faX = open (FIFO_AX_IN, ROPENMODE)) < 0)
+    if ((*faX = open (FIFO_AX_IN, ROPENMODE | O_NONBLOCK)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_AX_IN);
-        exit(-2);
-    }
-
-    unlink(FIFO_KERNEL_OUT);
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
-            exit(-1);
-        }
-        puts ("FIFO criada com sucesso");
-    } 
-
-    if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
-    {
-        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
         exit(-2);
     }
 
