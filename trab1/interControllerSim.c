@@ -24,6 +24,8 @@
 #define BLUE  "\x1b[34m"
 #define RESET   "\x1b[0m"
 
+int stopFlag = 0;
+
 int inKernelFIFO, outKernelFIFO;
 
 void iniciaVetor(Info vInfos[])
@@ -43,29 +45,7 @@ void iniciaVetor(Info vInfos[])
 
 void stopHandler(int sinal)
 {
-    write(inKernelFIFO, "stop", 5);
-
-    int segmento;
-    __key_t chave = 8751;
-
-    segmento = shmget(chave, sizeof(Info) * 5, S_IRUSR | S_IWUSR);
-    Info* vInfo = (Info*)shmat(segmento, 0, 0);
-    iniciaVetor(vInfo);
-    
-    
-    printf("#------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|-TERMINADO-|\n#------------------------------------------------------------------#\n");
-
-    for (int i = 0; i < 5; i++)
-    {
-        printf("| %d |   %d   |   %d   |  %d  | %d | %d | %d |   %d   |\n", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, vInfo[i].operacao, vInfo[i].qtdVzsD1, vInfo[i].qtdVzsD2, vInfo[i].estaTerminado);
-    }
-
-    //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", pc, estado, bloqueado, dispositivo, op, executando, d1, d2, terminado);
-    printf("#------------------------------------------------------------------#\n");
-
-    shmdt(vInfo);
-
-    pause();
+    stopFlag = 1;
 }
 
 int main(void)
@@ -113,10 +93,39 @@ int main(void)
 
     for (;;)
     {
+        if(stopFlag)
+        {
+            write(inKernelFIFO, "stop", 5);
+
+            int segmento;
+            __key_t chave = 8751;
+
+            segmento = shmget(chave, sizeof(Info) * 5, S_IRUSR | S_IWUSR);
+            Info* vInfo = (Info*)shmat(segmento, 0, 0);
+            iniciaVetor(vInfo);
+    
+    
+            printf("#------------------------------------------------------------------#\n|-PC-|-ESTADO-|-BLOQUEADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|-TERMINADO-|\n#------------------------------------------------------------------#\n");
+
+            for (int i = 0; i < 5; i++)
+            {
+                printf("| %d |   %d   |   %d   |  %d  | %d | %d | %d |   %d   |\n", vInfo[i].valorPC, vInfo[i].estado, vInfo[i].estado, vInfo[i].dispositivo, vInfo[i].operacao, vInfo[i].qtdVzsD1, vInfo[i].qtdVzsD2, vInfo[i].estaTerminado);
+            }
+
+            //printf("| %d | %s |   %d   |  %s  | %s |    %d    | %d | %d | %d |", pc, estado, bloqueado, dispositivo, op, executando, d1, d2, terminado);
+            printf("#------------------------------------------------------------------#\n");
+
+            shmdt(vInfo);
+
+            pause();
+
+            stopFlag = 0;
+        }
+
         char msg_to_kernel[4];
         int index = 0;
         int prob1 = rand()%100 + 1;
-        int prob2 = (rand()+1)%100 + 1;
+        int prob2 = rand()%100 + 1;
         
 
         //IRQ0
@@ -145,6 +154,6 @@ int main(void)
         //printf("controller vai mandar pela fifo\n");
         write(inKernelFIFO, msg_to_kernel, index);
         //printf("controller mandou pela fifo\n");
-        usleep(TIMESLICE);
+        usleep(TIMESLICE * 1000);
     }
 }
