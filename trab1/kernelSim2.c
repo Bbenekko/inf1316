@@ -13,7 +13,12 @@
 #define FIFO_KERNEL_IN "kernelFifoInt" 
 #endif
 
-//mensagens do kernel para o controller
+//mensagens da kernel para o controller
+#ifndef FIFO_KERNEL_OUT
+#define FIFO_KERNEL_OUT "kernelFifoOut"
+#endif
+
+//mensagens dos processos para o kernel
 #ifndef FIFO_AX_IN  
 #define FIFO_AX_IN "axFifoOut"
 #endif
@@ -29,7 +34,7 @@ Fila* filaD1;
 Fila* filaD2;
 
 //arquivos FIFO
-int fifoRq, fifoSc;
+int fifoRq, fifoSc, fifoOut;
 
 int pidInterCont = 0;
 
@@ -40,14 +45,14 @@ int pauseInt = 0;
 
 unsigned char retornaIndPid(Info vPids[], int pid);
 void iniciaVetor(Info vInfos[]);
-void configuraFifos(int* fin, int* faX);
+void configuraFifos(int* fin, int* faX, int* fout);
 void stopHandler(int num);
 
 int main()
 {
 
     signal(SIGINT, stopHandler);
-    configuraFifos(&fifoRq, &fifoSc);
+    configuraFifos(&fifoRq, &fifoSc, &fifoOut);
     iniciaVetor(vPids);
 
     filaD1 = criaFila();
@@ -202,7 +207,7 @@ int main()
     }
 }
 //realiza a abertura das fifos
-void configuraFifos(int* fin, int* faX)
+void configuraFifos(int* fin, int* faX, int* fout)
 {
     unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
@@ -238,6 +243,24 @@ void configuraFifos(int* fin, int* faX)
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_AX_IN);
         exit(-2);
     }
+
+    unlink(FIFO_KERNEL_OUT);
+    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+    {
+        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
+            exit(-1);
+        }
+        puts ("FIFO criada com sucesso");
+    } 
+
+    if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
+        exit(-2);
+    }
+
 }
 
 void iniciaVetor(Info vInfos[])
