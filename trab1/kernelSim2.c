@@ -54,25 +54,13 @@ void stopHandler(int num);
 int main()
 {
 
-    //signal(SIGINT, stopHandler);
-    configuraFifos(&fifoRq, &fifoSc, &fifoOut);
+    signal(SIGINT, stopHandler);
     iniciaVetor(vPids);
 
     filaD1 = criaFila();
     filaD2 = criaFila();
 
-    /* pidInterCont = fork();
-
-    if(!pidInterCont)
-    {
-        execle("interControllerSim2", "interControllerSim2", NULL, (char *)0);
-        exit(1);
-    }
-    else{
-        kill(pidInterCont, SIGSTOP);
-    } */
-
-    for(int i = 0; i < 5; i++)
+     for(int i = 0; i < 5; i++)
     {
         int pid = fork();
         if(pid == 0) //filho
@@ -89,6 +77,21 @@ int main()
     }
     kill(pidInterCont, SIGCONT);
 
+    pidInterCont = fork();
+
+    if(!pidInterCont)
+    {
+        printf("====================Tentativa de executar o controller!============================\n");
+        execle("interControllerSim2", "interControllerSim2", NULL, (char *)0);
+        printf("Não foi possível executar o controller!\n");
+        exit(1);
+    }
+    else{
+        kill(pidInterCont, SIGSTOP);
+    } 
+
+    puts("Tentativa de executar fifo!");
+    configuraFifos(&fifoRq, &fifoSc, &fifoOut);
 
     char buf [200];
 
@@ -180,7 +183,9 @@ int main()
                 {
                     kill(vPids[i].pid, SIGSTOP);
                     char buffer[30];
+                    printf("Dados para a tabela do controler enviados!\n");
                     int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD1);
+                    printf(buffer);
                     if (write(fifoOut, buffer, len) == -1) 
                     {
                         perror("Erro ao enviar dados pela FIFO de saída da kernel!");
@@ -199,7 +204,7 @@ int main()
             int pid, dispositivo, estado, pc;
             char operacao; 
             int index = 0;
-            if(sscanf(buf, "%d %d %d %d %c", &pid, &pc, &dispositivo, &estado, &operacao) == 5)
+            if(sscanf(buf, "%d %d %d %d %c\n", &pid, &pc, &dispositivo, &estado, &operacao) == 5)
             {
                 index = retornaIndPid(vPids, pid);
                 vPids[index].dispositivo = dispositivo;
@@ -233,23 +238,6 @@ int main()
 //realiza a abertura das fifos
 void configuraFifos(int* fin, int* faX, int* fout)
 {
-    unlink(FIFO_KERNEL_OUT);
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
-            exit(-1);
-        }
-        puts ("FIFO KERNEL OUT criada com sucesso");
-    } 
-
-    if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
-    {
-        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
-        exit(-2);
-    }
-
     unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
     {
@@ -261,7 +249,7 @@ void configuraFifos(int* fin, int* faX, int* fout)
         puts ("FIFO KERNEL IN criada com sucesso");
     } 
 
-    if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE)) < 0)
+    if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE | O_NONBLOCK)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_IN);
         exit(-2);
@@ -285,6 +273,22 @@ void configuraFifos(int* fin, int* faX, int* fout)
         exit(-2);
     }
 
+    unlink(FIFO_KERNEL_OUT);
+    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+    {
+        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
+            exit(-1);
+        }
+        puts ("FIFO KERNEL OUT criada com sucesso");
+    } 
+
+    if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
+    {
+        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
+        exit(-2);
+    }
 }
 
 void iniciaVetor(Info vInfos[])

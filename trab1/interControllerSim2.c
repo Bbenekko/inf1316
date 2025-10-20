@@ -34,10 +34,17 @@ void stopHandler(int signal)
     interrupcao = 1;
 }
 
+void continueHandler(int signal)
+{
+    // A função intencionalmente não faz nada.
+}
+
 void paraPrograma()
 {
     char aux = '3';
     write(inKernelFIFO, &aux, 1);
+
+    close(outKernelFIFO);
 
     FILE* fifo_text = fopen(FIFO_KERNEL_OUT, "r");
     if (fifo_text == NULL) 
@@ -57,11 +64,25 @@ void paraPrograma()
         if (fgets(buffer, 20, fifo_text) == NULL) 
         {
             fprintf( stderr, RED"Erro ao ler o fluxo da FIFO!\n"RESET, FIFO_KERNEL_OUT);
+            break;
         }
-        sscanf(buffer, "%d %d %d %c %d %d", &pc, &estado, &dispositivo, &op, &d1, &d2);
+        
+        if (sscanf(buffer, "%d %d %d %c %d %d\n", &pc, &estado, &dispositivo, &op, &d1, &d2) != 6)
+        {
+             fprintf( stderr, RED"Erro ao analisar dados da linha %d: %s\n"RESET, i + 1, buffer);
+             // Tenta imprimir o buffer lido para debug
+        }
+
         printf("| %d |    %d    |    %d    | %c | %d | %d |\n", pc, estado, dispositivo, op, d1, d2);
     }
+    printf("#------------------------------------------#\n");
     fclose(fifo_text);
+
+    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
+    {
+        fprintf (stderr, RED"Erro ao reabrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
+        exit(1);
+    }
 
     pause();
     interrupcao = 0;
@@ -71,11 +92,13 @@ int main(void)
 {
     //signal(SIGINT, SIG_IGN);
     signal(SIGINT, stopHandler);
+    signal(SIGCONT, continueHandler);
 
     printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
 
     // Criação e abertura das FIFOs (comunicação entre kernel e controller)
 
+    unlink(FIFO_KERNEL_OUT);
     if (access(FIFO_KERNEL_OUT, F_OK) == -1)
     {
         if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
@@ -85,7 +108,6 @@ int main(void)
         }
     }
     puts (BLUE"Abrindo FIFO de saída do servidor!"RESET);
-    puts (YELLOW"Aguardando iniciação da kernel..."RESET);
 
     if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
     {
@@ -93,6 +115,7 @@ int main(void)
         return -2;
     }
 
+    unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
     {
         if (mkfifo (FIFO_KERNEL_IN, S_IRUSR | S_IWUSR) != 0)
