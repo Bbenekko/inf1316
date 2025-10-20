@@ -13,7 +13,8 @@
 #include "kernelSim.h"
 
 #define FIFO_KERNEL_IN "kernelFifoInt"
-//#define FIFO_KERNEL_OUT "kernelFifoOut"
+
+#define FIFO_KERNEL_OUT "kernelFifoOut"
 
 #define TIMESLICE 500000
 
@@ -24,7 +25,46 @@
 #define BLUE  "\x1b[34m"
 #define RESET   "\x1b[0m"
 
-int inKernelFIFO;
+int inKernelFIFO, outKernelFIFO;
+int interrupcao = 0;
+
+void stopHandler(int signal)
+{
+    printf("\nController parado!!!\n");
+    interrupcao = 1;
+}
+
+void paraPrograma()
+{
+    char aux = '3';
+    write(inKernelFIFO, &aux, 1);
+
+    FILE* fifo_text = fopen(outKernelFIFO, "r");
+    if (fifo_text == NULL) 
+    {
+        perror(RED"Erro na criação do fluxo de arquivo da FIFO!"RESET);
+        close(outKernelFIFO);
+        exit(0);
+    }
+
+    printf("LEGENDA: Estado: 0 - espera ; 1 - em andamento ; 2 terminado ; 3 - bloqueado\nDispositivo: Apenas se estiver bloqueado: 0 - nnao esta bloqueado ; 1 - D1; 2 - D2\nD1 e D2 - Mostra quantas vezes houve interrupções por esses dispositivos\n#------------------------------------------#\n|-PC-|-ESTADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|\n#------------------------------------------#\n");
+
+    for (int i = 0; i < 5; i++)
+    {
+        char buffer[20];
+        int pc, estado, dispositivo, d1, d2;
+        char op;
+        if (fgets(buffer, 20, fifo_text) == NULL) 
+        {
+            fprintf( stderr, RED"Erro ao ler o fluxo da FIFO!\n"RESET, FIFO_KERNEL_OUT);
+        }
+        sscanf(buffer, "%d %d %d %c %d %d", &pc, &estado, &dispositivo, &op, &d1, &d2);
+        printf("| %d |    %d    |    %d    | %c | %d | %d |\n", pc, estado, dispositivo, op, d1, d2);
+    }
+
+    pause();
+    interrupcao = 0;
+}
 
 int main(void)
 {
@@ -49,11 +89,28 @@ int main(void)
         return -2;
     }
 
+    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
+    {
+        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
+        {
+            fprintf (stderr, RED"Erro ao criar FIFO %s\n"RESET, FIFO_KERNEL_OUT);
+            return -1;
+        }
+    }
+    puts (BLUE"Abrindo FIFO de saída do servidor!"RESET);
+    puts (YELLOW"Aguardando iniciação da kernel..."RESET);
+    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
+    {
+        fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
+        return -2;
+    }
+
     time_t t;
     srand((unsigned) time(&t));
 
     for (;;)
     {
+        if (interrupcao) paraPrograma();
         char msg_to_kernel;
         int prob1 = rand()%100 + 1;
         int prob2 = (rand()+1)%100 + 1;

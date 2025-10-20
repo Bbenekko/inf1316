@@ -168,6 +168,26 @@ int main()
                 }
             }
 
+            // interrupção do controller
+            else if (ch == '3')
+            {
+                // TODO mandar os dados de print para o controler!!
+                for(int i = 0; i < 5; i++)
+                {
+                    kill(vPids[i].pid, SIGSTOP);
+                    char buffer[30];
+                    int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD2);
+                    if (write(fifoOut, buffer, len) == -1) 
+                    {
+                        perror("Erro ao enviar dados pela FIFO de saída da kernel!");
+                        close(fifoOut);
+                        close(fifoRq);
+                        close(fifoSc);
+                        exit(0);
+                    }
+                }
+            }
+
         }
 
         if(read (fifoSc, buf, sizeof(buf)) > 0)
