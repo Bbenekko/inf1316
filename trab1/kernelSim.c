@@ -20,7 +20,7 @@
 
 //mensagens do kernel para o controller
 #ifndef FIFO_AX_IN  
-#define FIFO_AX_IN "kernelFifoOut"
+#define FIFO_AX_IN "axFifoOut"
 #endif
 
 #define ROPENMODE (O_RDONLY | O_NONBLOCK)
@@ -111,6 +111,8 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
     {
         pid = fork();
         fprintf(stderr, "%d --- pid: %d\n", __LINE__, pid);
+        if (i != 0)
+            vPids[i-1] = pid;
 
         if(pid == 0) //filho
         {
@@ -122,7 +124,6 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
             }
             else
             {
-                vPids[i-1] = pid;
                 execle("ax", "ax", NULL, (char*)0);
                 fprintf(stderr, "%d --- depois do execle do filho\n", __LINE__);
             }
@@ -154,6 +155,8 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
     ePrimeiro = 1;
 
+    sleep(1);
+
     while(1)
     {
         char vResposta [3];
@@ -176,8 +179,11 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
         while (read (fifoIn, &ch, sizeof(ch)) > 0)
         {
-            vResposta[i] = ch;
+            vResposta[i++] = ch;
         }
+        vResposta[i] = '\0';
+
+        fprintf(stderr, "Resposta do controller: %s\n",vResposta);
 
         if(strcmp(vResposta, "0") == 0)
         {
@@ -209,12 +215,13 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
         int j = retornaIndPid(vPids, pid);
 
-        char vRetorno[4][10];
+        char vRetorno[4][100];
         int numsPid;
         char operacao;
         int numDispositvo;
         int pc;
         int k = 0;
+        i = 0;
         //ordem - Pid - pc - dispositivo - operacao
         while (read (fifoaX, &ch, sizeof(ch)) > 0)
         {
@@ -222,16 +229,40 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
             if (ch == '\0')
             {
+                fprintf(stderr, "PC str: %s\n",vRetorno[i]);
                 i++;
                 k = 0;
             }
         }
+
+    /*     char fields[4][16] = {{0}};  // aumentei o espaço
+        int fidx = 0, k = 0;
+        char ch;
+
+        while (fidx < 4) 
+        {
+            ssize_t n = read(fifoaX, &ch, 1);
+            if (n <= 0) break;                 // não bloqueia
+            if (ch == '\0') { fields[fidx][k] = '\0'; fidx++; k = 0; }
+            else if (k < 15) fields[fidx][k++] = ch; // evita overflow
+        } */
+
+        fprintf(stderr, "PC str: %s\n",vRetorno[1]);
+        fprintf(stderr, "pid str: %s\n", vRetorno[0]);
+        fprintf(stderr, "disp str: %s\n", vRetorno[2]);
+        fprintf(stderr, "opera str: %s\n", vRetorno[3]);
+
 
         //read(fd[0], pcStr, 10);
         numsPid = atoi(vRetorno[0]);
         pc = atoi(vRetorno[1]);
         numDispositvo = atoi(vRetorno[2]);
         operacao = vRetorno[3][0];
+
+        fprintf(stderr, "PC dps atoi: %d\n", pc);
+        fprintf(stderr, "pid dps atoi: %d\n", numsPid);
+        fprintf(stderr, "disp dps atoi: %d\n", numDispositvo);
+        fprintf(stderr, "opera dps atoi: %d\n", operacao);
 
         if (numDispositvo)
         {
@@ -260,7 +291,7 @@ fprintf(stderr, "%d --- Passei aqui\n", __LINE__);
 
         atualizaVetor(vInfoComp, infoNova, vPids, pid);  
 
-        usleep(500000000);
+        usleep(5000);
 
     }
 

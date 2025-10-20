@@ -117,7 +117,7 @@ int main(void)
         int index = 0;
         int prob1 = rand()%100 + 1;
         int prob2 = (rand()+1)%100 + 1;
-        usleep(TIMESLICE);
+        
 
         //IRQ0
         msg_to_kernel[index] = '0';
@@ -128,7 +128,7 @@ int main(void)
         {
             msg_to_kernel[index] = '1';
             index++;
-            puts("Interrupção do dispositivo 1!");
+            //puts("Interrupção do dispositivo 1!");
         }
 
         //IRQ2
@@ -136,12 +136,15 @@ int main(void)
         {
             msg_to_kernel[index] = '2';
             index++;
-            puts("Interrupção do dispotivo 2!");
+            //puts("Interrupção do dispotivo 2!");
         };
 
         msg_to_kernel[index] = '\0';
         index++;
 
+        //printf("controller vai mandar pela fifo\n");
         write(inKernelFIFO, msg_to_kernel, index);
+        //printf("controller mandou pela fifo\n");
+        usleep(TIMESLICE);
     }
 }
