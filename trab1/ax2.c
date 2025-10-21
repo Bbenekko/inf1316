@@ -5,15 +5,19 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define FIFO_AX_OUT "axFifoOut"
 
 #define WOPENMODE (O_WRONLY | O_NONBLOCK)
-#define MAX 5
+#define MAX 40
 
 int main(void)
 {
     signal(SIGINT, SIG_IGN);
+
+    time_t t;
+    srand((unsigned) time(&t));
 
     int PC = 0;
 
@@ -26,16 +30,17 @@ int main(void)
     if (outAxFIFO < 0) { perror("open axFifoOut"); return 1; }
 
     while (PC < MAX) {
-        int dispositivo, estado;
-        char operacao; 
+        int dispositivo = 0;
+        int estado = 1;
+        char operacao = 'x'; 
         usleep(500000);  // 0.1 s
         estado = 1;
         PC++;
         int d = rand()%100 + 1;
 
         if (d < 15) {
-            dispositivo = ((d % 2) ? 1 : 0) + 1;
-            operacao = "rwx"[rand()%3];
+            dispositivo = (d % 2 == 0) ? 1 : 2; 
+            operacao = "rw"[rand()%2];
         } 
 
         if (PC >= MAX)
@@ -46,7 +51,8 @@ int main(void)
         char buf[200];
 
 
-        sprintf(buf, "%d %d %d %d %c", getpid(), PC, dispositivo, estado, operacao);
+        printf("%d %d %d %d %c\n", getpid(), PC, dispositivo, estado, operacao);
+        sprintf(buf, "%d %d %d %d %c\n", getpid(), PC, dispositivo, estado, operacao);
          write(outAxFIFO, buf, strlen(buf) + 1);
       
         usleep(500000);

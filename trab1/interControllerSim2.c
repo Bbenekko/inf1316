@@ -34,10 +34,20 @@ void stopHandler(int signal)
     interrupcao = 1;
 }
 
+void continueHandler(int signal)
+{
+    // A função intencionalmente não faz nada.
+}
+
 void paraPrograma()
 {
     char aux = '3';
     write(inKernelFIFO, &aux, 1);
+
+    //pausa de processamento da kernel
+    usleep(50000);
+
+    close(outKernelFIFO);
 
     FILE* fifo_text = fopen(FIFO_KERNEL_OUT, "r");
     if (fifo_text == NULL) 
@@ -51,17 +61,26 @@ void paraPrograma()
 
     for (int i = 0; i < 5; i++)
     {
-        char buffer[20];
+        char buffer[30];
         int pc, estado, dispositivo, d1, d2;
         char op;
-        if (fgets(buffer, 20, fifo_text) == NULL) 
+        if (fgets(buffer, 30, fifo_text) == NULL) 
         {
             fprintf( stderr, RED"Erro ao ler o fluxo da FIFO!\n"RESET, FIFO_KERNEL_OUT);
+            break;
         }
         sscanf(buffer, "%d %d %d %c %d %d", &pc, &estado, &dispositivo, &op, &d1, &d2);
-        printf("| %d |    %d    |    %d    | %c | %d | %d |\n", pc, estado, dispositivo, op, d1, d2);
+        printf("| %d |    %d    |     %d     | %c | %d | %d |\n", pc, estado, dispositivo, op, d1, d2);
     }
     fclose(fifo_text);
+
+    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
+    {
+        fprintf (stderr, RED"Erro ao reabrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
+        exit(1);
+    }
+
+    printf("#------------------------------------------#\n");
 
     pause();
     interrupcao = 0;
@@ -71,6 +90,7 @@ int main(void)
 {
     //signal(SIGINT, SIG_IGN);
     signal(SIGINT, stopHandler);
+    signal(SIGCONT, continueHandler);
 
     printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
 
@@ -117,7 +137,7 @@ int main(void)
         if (interrupcao) paraPrograma();
         char msg_to_kernel;
         int prob1 = rand()%100 + 1;
-        int prob2 = (rand()+1)%100 + 1;
+        int prob2 = rand()%100 + 1;
         
 
         //IRQ0

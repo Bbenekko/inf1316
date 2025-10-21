@@ -87,7 +87,12 @@ int main()
             kill(pid, SIGSTOP);
         }
     }
-    kill(pidInterCont, SIGCONT);
+    indexPidCurrent = 0; // Define o primeiro processo.
+    if (vPids[indexPidCurrent].pid != 0) {
+        kill(vPids[indexPidCurrent].pid, SIGCONT);
+        vPids[indexPidCurrent].estado = 1;
+        printf("kernel - processo %d liberado (inicializacao)\n", vPids[indexPidCurrent].pid);
+    }
 
 
     char buf [200];
@@ -107,14 +112,14 @@ int main()
             kill(pidInterCont, SIGSTOP);
             pause();
         }
-        else{
+        /* else{
             for(int i = 0; i < 5; i++)
             {
                 if (vPids[i].estado == 1)
                     kill(vPids[i].pid, SIGCONT);
             }
             kill(pidInterCont, SIGCONT);
-        }
+        } */
 
         if (read (fifoRq, &ch, sizeof(ch)) > 0)
         {
@@ -134,7 +139,7 @@ int main()
                     if(vPids[proxId].estado == 0)
                     {
                         kill(vPids[proxId].pid, SIGCONT);
-                        printf("kernel - processo %d liberado pelo timeslice\n", vPids[indexPidCurrent].pid);
+                        printf("kernel - processo %d liberado pelo timeslice\n", vPids[proxId].pid);
                         vPids[proxId].estado = 1;
                         indexPidCurrent = proxId;
                         break;
@@ -180,7 +185,7 @@ int main()
                 {
                     kill(vPids[i].pid, SIGSTOP);
                     char buffer[30];
-                    int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD1);
+                    int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD2);
                     if (write(fifoOut, buffer, len) == -1) 
                     {
                         perror("Erro ao enviar dados pela FIFO de saída da kernel!");
@@ -261,7 +266,7 @@ void configuraFifos(int* fin, int* faX, int* fout)
         puts ("FIFO KERNEL IN criada com sucesso");
     } 
 
-    if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE)) < 0)
+    if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE | O_NONBLOCK)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_IN);
         exit(-2);
