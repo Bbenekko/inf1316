@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+
 union semun
 {
     int val;
@@ -18,11 +19,17 @@ void delSemValue(int semId);
 int semaforoP(int semId);
 // operação V
 int semaforoV(int semId);
+<<<<<<< HEAD
 int main(int argc, char *argv[])
+=======
+
+int main (int argc, char * argv[])
+>>>>>>> refs/heads/impares
 {
     int i;
     char letra = 'o';
     int semId;
+<<<<<<< HEAD
     if (argc > 1)
     {
         semId = semget(8752, 1, 0666 | IPC_CREAT);
@@ -51,6 +58,35 @@ int main(int argc, char *argv[])
         sleep(rand() % 2);
     }
     printf("\nProcesso %d terminou\n", getpid());
+=======
+    printf("Qtd argc: %d\n", argc);
+    if (argc > 1)
+    {
+        semId = semget (8752, 1, 0666 | IPC_CREAT);
+        printf("SemID: %d\n", semId);
+        setSemValue(semId);
+        letra = 'x';
+        sleep (2);
+    }
+    else
+    {
+        while ((semId = semget (8752, 1, 0666)) < 0)
+        {
+            putchar ('.'); fflush(stdout);
+            sleep (1);
+        }
+    }
+    for (i=0; i<10; i++)
+    {
+        semaforoP(semId);
+        putchar (toupper(letra)); fflush(stdout);
+        sleep (rand() %3);
+        putchar (letra); fflush(stdout);
+        semaforoV(semId);
+        sleep (rand() %2);
+    }
+        printf ("\nProcesso %d terminou\n", getpid());
+>>>>>>> refs/heads/impares
     if (argc > 1)
     {
         sleep(10);
