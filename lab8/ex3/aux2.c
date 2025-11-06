@@ -1,9 +1,11 @@
-/* Exemplo de uso de unico semáforo*/
-#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
+#include <sys/sem.h>
 
 union semun
 {
@@ -20,45 +22,35 @@ int semaforoP(int semId);
 //operação V
 int semaforoV(int semId);
 
-int main (int argc, char * argv[])
+int main(void)
 {
-    int i;
-    char letra = 'o';
-    int semId;
-    printf("Qtd argc: %d\n", argc);
-    if (argc > 1)
-    {
-        semId = semget (8752, 1, 0666 | IPC_CREAT);
-        printf("SemID: %d\n", semId);
-        setSemValue(semId);
-        letra = 'x';
-        sleep (2);
+    printf("Aux2 - Entrei no filho %d\n", getpid());
+    __key_t chave1 = 8751;
+    __key_t chave2 = 8753;
+
+
+    int segmento = shmget (chave1, sizeof(int), S_IRUSR | S_IWUSR);
+    if(segmento < 0) {
+        perror("shmget");
+        exit(1);
     }
-    else
-    {
-        while ((semId = semget (8752, 1, 0666)) < 0)
-        {
-            putchar ('.'); fflush(stdout);
-            sleep (1);
-        }
-    }
-    for (i=0; i<10; i++)
-    {
+    int* p = (int *) shmat (segmento, 0, 0);
+
+    int semId = semget (chave2, 1, 0666 | IPC_CREAT);
+    printf("SemID: %d\n", semId);
+    for(int i = 0; i < 10; i++) {
         semaforoP(semId);
-        putchar (toupper(letra)); fflush(stdout);
-        sleep (rand() %3);
-        putchar (letra); fflush(stdout);
+        (*p) +=5;
+        printf("Valor atual: %d --- filho: %d\n", *p, getpid());
         semaforoV(semId);
-        sleep (rand() %2);
+        sleep(1);
     }
-        printf ("\nProcesso %d terminou\n", getpid());
-    if (argc > 1)
-    {
-        sleep(10);
-        delSemValue(semId);
-    }
-    return 0;
+    shmdt (p);
+    shmctl (segmento, IPC_RMID, 0);
+    printf ("\nProcesso %d terminou\n", getpid());
+    exit(0);
 }
+
 int setSemValue(int semId)
 {
     union semun semUnion;
