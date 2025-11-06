@@ -25,11 +25,9 @@ int main (int argc, char * argv[])
     int i;
     char letra = 'o';
     int semId;
-    printf("Qtd argc: %d\n", argc);
     if (argc > 1)
     {
         semId = semget (8752, 1, 0666 | IPC_CREAT);
-        printf("SemID: %d\n", semId);
         setSemValue(semId);
         letra = 'x';
         sleep (2);
@@ -41,7 +39,7 @@ int main (int argc, char * argv[])
             putchar ('.'); fflush(stdout);
             sleep (1);
         }
-    }
+    } 
     for (i=0; i<10; i++)
     {
         semaforoP(semId);
@@ -57,7 +55,7 @@ int main (int argc, char * argv[])
         sleep(10);
         delSemValue(semId);
     }
-    return 0;
+    return 0; 
 }
 int setSemValue(int semId)
 {

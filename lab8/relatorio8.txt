@@ -116,18 +116,30 @@ $./semaforo 1
 -----------------------------------------------------
 RESULTADO 2
 
-
+$mayara@mayara-Inspiron-15-3530:~/Documentos/periodos/8periodo/sistemOperac/inf1316/lab8$ ./semaforo &
+[1] 11068
+$.mayara@mayara-Inspiron-15-3530:~/Documentos/periodos/8periodo/sistemOperac/inf1316/lab8$ ..../semaforo &.1
+OoOoXxOoXxOoXxOoXxOoXxOoXxOoXxOoOoX
+Processo 11068 terminou
+xXxXx
+Processo 11119 terminou
+[1]+  Concluído              ./semaforo
 -----------------------------------------------------
 CONCLUSÃO
 
 Na primeira execução em que não é passado nenhum argumento para a main, enquanto o semáforo não 
 é criado, é printado um ponto. Após a criação, por 10 vezes, o programa entra na região crítica
-com a função semaforoP que decrementa o valor do semaforo, coloca o caractere "o" em letra maiúscula, 
+com a função semaforoP que decrementa o valor do semáforo, coloca o caractere "o" em letra maiúscula, 
 dorme, coloca a letra "o" e incrementa o valor do semáforo com a função "semaforoV" e dorme. Assim, 
-Isso garante que apenas quem entrou na região crítica está realizando as operações no momento sem deixar
+Isso garante que apenas quem entrou na região crítica está realizando as operações no momento, sem deixar
 que outro processo que poderia estar querendo usar esse código no momento possa utilizar e fique esperando.
 
-Na segunda execução em que é passado
+Na segunda execução em que é passado o argumento &, ele começa a printar uns pontos e após tentar rodar 
+novamente com um argumento, ambos começam a printar de modo alternado por já ser um programando rodando e um 
+novo iniciado. Com isso, pelo uso do semáforo, apenas cada um consegue entrar na zona crítica de uma vez e printar
+o seu respectivo caractere. Com isso, ele fica alternando o caractere entre "Oo" e "Xx" assim como está mostrando
+na saída e após o fim do primeiro programa, ele printa apenas o "Xx" que é o que o segundo programa printa e depois 
+ele termina. 
 
 -----------------------------------------------------
 
@@ -587,10 +599,15 @@ Processo pai 18914 terminou
 
 CONCLUSÃO 
 
-Na main, é criado o semáforo e a memória compartilhada com chaves fixas de modo que outros 
+Na main, é criado o semáforo e a memória compartilhada com chaves fixas, de modo que outros 
 processos podem anexar em seus programas esse sinal e memória. Depois, são criados dois filhos que 
 são transformados pelo execl para seus respectivos executáveis (exec1 e exec2). Com isso, cada um 
-percorre um loop com 10 iterações para fazer seu respctivo acréscimo na variável compartilhada. 
-Entretanto, para que n
+percorre um loop com 10 iterações para fazer seu respectivo acréscimo na variável compartilhada. 
+Entretanto, conforme foi pedido, o uso de semáforos foi utilizado para que os dois processos não
+utilizem a memória ao mesmo tempo, o que faz com que, ao um processo entrar na área crítica, o outro
+não entra, o que faz com que surja a alternância na hora do print em que apenas um processo faz o 
+acréscimo e o print por vez. Depois, é removido o link da memória compartilhada nos processos filhos,
+eles são terminados e o processo pai também remove o link com a memória compartilhada e exclui o sinal
+criado por ele anteriormente, finalizando assim o processo pai.
 
 -----------------------------------------------------
