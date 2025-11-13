@@ -1,0 +1,411 @@
+Bento Bruno Contarini Gonçalves  -  2311122
+Mayara Ramos Damazio - 2210833
+
+Questão 1) Execute o programa Corrida de Sapo algumas vezes e
+analise os resultados sobre a ordem de chegada dos sapos. 
+Obs: compile com a opção –lpthread
+
+-----------------------------------------------------
+ARQUIVO corrida_dos_sapos.c
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#define NUM_THREADS 5
+#define PULO_MAXIMO 100
+#define DESCANSO_MAXIMO 1
+#define DISTANCIA_PARA_CORRER 100
+static int classificacao = 1;
+static pthread_mutex_t lock;
+static char * resp[200];
+static int cont = 0;
+
+void *Correr(void *sapo)
+{
+    int pulos = 0;
+    int distanciaJaCorrida = 0;
+    while (distanciaJaCorrida <= DISTANCIA_PARA_CORRER) 
+    {
+        int pulo = rand() % PULO_MAXIMO;
+        distanciaJaCorrida += pulo;
+        pulos++;
+        printf("Sapo %d pulou\n", (int) sapo);
+        int descanso = rand() % DESCANSO_MAXIMO;
+        sleep(descanso);
+    }
+    printf("Sapo %d chegou na posicaoo %d com %d pulos\n", (int) sapo, classificacao, pulos);
+    cont++;
+    classificacao++;
+    pthread_exit(NULL);
+}
+
+int main()
+{
+    classificacao =1;
+    pthread_t threads[NUM_THREADS];
+    int t;
+    printf("Corrida iniciada ... \n");
+    for(t=0;t < NUM_THREADS;t++) pthread_create(&threads[t], NULL, Correr, (void *) t);
+    for(t=0;t < NUM_THREADS; t++) pthread_join(threads[t],NULL);
+    printf("\n Acabou!!\n");
+    pthread_exit(NULL);
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o corrida corrida_dos_sapos.c -lpthread
+$./corrida
+-----------------------------------------------------
+RESULTADO 1
+
+Corrida iniciada ... 
+Sapo 1 pulou
+Sapo 2 pulou
+Sapo 0 pulou
+Sapo 3 pulou
+Sapo 2 pulou
+Sapo 4 pulou
+Sapo 0 pulou
+Sapo 1 pulou
+Sapo 3 pulou
+Sapo 2 chegou na posicaoo 1 com 2 pulos
+Sapo 4 pulou
+Sapo 1 chegou na posicaoo 2 com 2 pulos
+Sapo 3 chegou na posicaoo 3 com 2 pulos
+Sapo 0 chegou na posicaoo 2 com 2 pulos
+Sapo 4 chegou na posicaoo 5 com 2 pulos
+
+Acabou!!
+
+RESULTADO 2
+
+Corrida iniciada ... 
+Sapo 0 pulou
+Sapo 2 pulou
+Sapo 1 pulou
+Sapo 0 pulou
+Sapo 3 pulou
+Sapo 2 pulou
+Sapo 4 pulou
+Sapo 4 pulou
+Sapo 1 pulou
+Sapo 0 chegou na posicaoo 1 com 2 pulos
+Sapo 3 pulou
+Sapo 2 chegou na posicaoo 2 com 2 pulos
+Sapo 1 pulou
+Sapo 3 chegou na posicaoo 3 com 2 pulos
+Sapo 4 pulou
+Sapo 1 pulou
+Sapo 4 chegou na posicaoo 4 com 3 pulos
+Sapo 1 chegou na posicaoo 5 com 4 pulos
+
+Acabou!!
+
+-----------------------------------------------------
+CONCLUSÃO
+
+Após compilar o programa com a opção -lpthread que diz ao linker que é para incluir 
+a biblioteca de Threads e rodar o executável, é perceptível que a ordem em que os 
+sapos chegam são diferentes a cada vez que o executável é executado. Isso mostra bem 
+a concorrência entre as threads em que não há uma ordem correta de quando cada uma é
+executada. Além disso, também é perceptível uma das características de threads: o 
+compartilhamento das variáveis de modo que onde houve mudança, no caso do acréscimo da
+variável em que o acréscimo em uma thread era percebida pela outra o que não acontece 
+entre criação de processos filhos. É importante comentar que no resultado 1 houve um 
+falso empate. Parece que 2 sapos chegaram ao mesmo tempo, mas na verdade, isso ocorre pois 
+quando o primeiro printa, entre o tempo do final do print e dele incrementar o contador a 
+thread que representa o outro sapo printa também e o modifico, o que representa um falso empate.  
+
+-----------------------------------------------------
+
+Questão 2) 
+Usando mutex, modifique o programa Corrida de Sampo
+para que o problema identificado anteriormente não ocorra.
+-----------------------------------------------------
+ARQUIVO corrida_com_mutex.c
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#define NUM_THREADS 5
+#define PULO_MAXIMO 100
+#define DESCANSO_MAXIMO 1
+#define DISTANCIA_PARA_CORRER 100
+static int classificacao = 1;
+static pthread_mutex_t lock;
+static char * resp[200];
+static int cont = 0;
+
+void *Correr(void *sapo)
+{
+    int pulos = 0;
+    int distanciaJaCorrida = 0;
+    while (distanciaJaCorrida <= DISTANCIA_PARA_CORRER) 
+    {
+        int pulo = rand() % PULO_MAXIMO;
+        distanciaJaCorrida += pulo;
+        pulos++;
+        printf("Sapo %d pulou\n", (int) sapo);
+        int descanso = rand() % DESCANSO_MAXIMO;
+        sleep(descanso);
+    }
+    pthread_mutex_lock( &lock); 
+    printf("Sapo %d chegou na posicaoo %d com %d pulos\n", (int) sapo, classificacao, pulos);
+    cont++;
+    pthread_mutex_unlock( &lock );
+    classificacao++;
+    pthread_exit(NULL);
+}
+
+int main()
+{
+    classificacao =1;
+    pthread_t threads[NUM_THREADS];
+    int t;
+    printf("Corrida iniciada ... \n");
+    for(t=0;t < NUM_THREADS;t++) pthread_create(&threads[t], NULL, Correr, (void *) t);
+    for(t=0;t < NUM_THREADS; t++) pthread_join(threads[t],NULL);
+    printf("\n Acabou!!\n");
+    pthread_exit(NULL);
+
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO PARTE 1
+$gcc -Wall -o corrida corrida_com_mutex.c -lpthread
+$./corrida 
+
+-----------------------------------------------------
+RESULTADO 1
+
+Corrida iniciada ... 
+Sapo 0 pulou
+Sapo 1 pulou
+Sapo 2 pulou
+Sapo 1 pulou
+Sapo 2 pulou
+Sapo 0 pulou
+Sapo 4 pulou
+Sapo 1 chegou na posicaoo 1 com 2 pulos
+Sapo 3 pulou
+Sapo 2 chegou na posicaoo 2 com 2 pulos
+Sapo 4 pulou
+Sapo 3 pulou
+Sapo 0 chegou na posicaoo 3 com 2 pulos
+Sapo 4 chegou na posicaoo 4 com 2 pulos
+Sapo 3 chegou na posicaoo 5 com 2 pulos
+
+RESULTADO 2
+
+Corrida iniciada ... 
+Sapo 0 pulou
+Sapo 2 pulou
+Sapo 1 pulou
+Sapo 0 pulou
+Sapo 4 pulou
+Sapo 3 pulou
+Sapo 2 pulou
+Sapo 4 pulou
+Sapo 1 pulou
+Sapo 0 chegou na posicaoo 1 com 2 pulos
+Sapo 3 pulou
+Sapo 2 chegou na posicaoo 2 com 2 pulos
+Sapo 4 chegou na posicaoo 3 com 2 pulos
+Sapo 1 pulou
+Sapo 3 chegou na posicaoo 4 com 2 pulos
+Sapo 1 pulou
+Sapo 1 chegou na posicaoo 5 com 4 pulos
+
+-----------------------------------------------------
+
+CONCLUSÃO
+
+Para evitar empates falsos, foi utilizado um mutex em que a variável contadora
+foi a lock. Foram chamadas as funções que garantem a exclusão mútua pthread_mutex_lock()
+e pthread_mutex_unlock() respectivamente acima e abaixo das seguintes linhas de código:
+
+printf("Sapo %d chegou na posicaoo %d com %d pulos\n", (int) sapo, classificacao, pulos);
+cont++;
+
+Foram escolhidas essas linhas para serem englobada pela exclusão múltipla pois, assim que uma 
+thread entra na execução dessas linhas, as outras pausam. Então a que está executando consegue, 
+sem problemas, fazer o print e incrementar o cont de modo que a próxima que entrar nessa parte 
+já estará com a contagem certinha, não pode atropelar esse processo.
+
+-----------------------------------------------------
+
+Questão 3) Escreva um programa que percorre recursivamente um diretório, a partir 
+do diretório corrente, somando o tamanho de todos os arquivos encontrados. 
+-----------------------------------------------------
+ARQUIVO ex3.c
+
+#include <sys/types.h>
+#include <sys/dir.h>
+#include <sys/param.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+int percorreDirs(const char *path) {
+    DIR *dir;
+    struct dirent *entry;
+    int total = 0;
+
+    dir = opendir(path);
+    if (!dir) {
+        perror(path);
+        return 0;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        const char *name = entry->d_name;
+
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+            continue;
+
+        char pathname[MAXPATHLEN];
+        snprintf(pathname, sizeof(pathname), "%s/%s", path, name);
+
+        struct stat st;
+        if (stat(pathname, &st) == -1) {
+            perror(pathname);
+            continue;
+        }
+
+        if (S_ISDIR(st.st_mode)) {
+            total += percorreDirs(pathname);
+        } 
+        else {
+            printf("%s: %d bytes\n", pathname, (int)st.st_size);
+            total += (int)st.st_size;
+        }
+    }
+
+    closedir(dir);
+    return total;
+}
+
+int main() {
+    int total = percorreDirs(".");
+    printf("Total de bytes = %d\n", total);
+    return 0;
+}
+-----------------------------------------------------
+
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex3 ex3.c
+$./ex3
+-----------------------------------------------------
+
+RESULTADO
+
+Está dentro do arquivo "output_da_3.txt", pois foi muito grande, já que foram 64 elementos
+processados/criados.
+-----------------------------------------------------
+
+CONCLUSÃO 
+
+A base desse programa foi o código dado na aula "Capítulo 2 - Gerenciamento de Processos, Threads e Escalonamento".
+Apenas foram feitas alterações para suportar uma fila ao invés de um buffer único (que era o
+exemplo dado na aula). As saídas foram coloridas para facilitar a leitura:
+- AZUL: entrada
+- AMARELO: saída
+- VERMELHO: warning
+As alterações para a fila foram checagem se a fila está cheia (através de um variável global
+que conta os espaços vazios).
+
+-----------------------------------------------------
+
+Questão 4) Modifique o programa anterior para mostrar
+recursivamente os diretórios e arquivos aninhados. 
+
+-----------------------------------------------------
+ARQUIVO ex4.c
+
+#include <sys/types.h>
+#include <sys/dir.h>
+#include <sys/param.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
+void percorreDirs(const char *path,int nvl) {
+    DIR *dir;
+    struct dirent *entry;
+
+    dir = opendir(path);
+    if (!dir) {
+        perror(path);
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        const char *name = entry->d_name;
+
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+            continue;
+
+        char pathname[MAXPATHLEN];
+        snprintf(pathname, sizeof(pathname), "%s/%s", path, name);
+
+        struct stat st;
+        if (stat(pathname, &st) == -1) {
+            perror(pathname);
+            continue;
+        }
+
+        if (S_ISDIR(st.st_mode)) {
+            printf("%*s[%s]\n", nvl * 2, "", name);
+            percorreDirs(pathname, nvl + 1);
+        } 
+        else {
+            printf("%*s%s\n", nvl * 2, "", name);
+        }
+    }
+
+    closedir(dir);
+}
+
+int main() {
+    printf("[%s]\n", ".");
+    percorreDirs(".", 0);
+    return 0;
+}
+
+-----------------------------------------------------
+COMPILAÇÃO E EXECUÇÃO
+$gcc -Wall -o ex4 ex4.c
+$./ex4
+
+-----------------------------------------------------
+RESULTADO
+
+Está dentro do arquivo "output_da_4.txt", pois foi muito grande, já que foram 64 elementos
+processados/criados.
+
+-----------------------------------------------------
+CONCLUSÃO
+
+O código se assemelha muito ao código anterior (questão 3), com apenas a diferença
+de que a condição de loop para geração do total de elementos foi dividida sobre a 
+quantidade de threads (ex: no caso de 2 threads, cada uma trabalhará apenas com uma 
+metade  (1/2) do total).
+O mutex não teve nenhuma mudança no código.
+Vale ressaltar que esse programa foi muito mais rápido que o anterior, devido
+a maior quantidade de threads trabalhando.
