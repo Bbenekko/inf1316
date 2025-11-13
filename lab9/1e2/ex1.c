@@ -43,10 +43,11 @@ int main()
     struct dirent **files;
     struct stat stats;
     int count;
+    time_t now = time(NULL);
 
     if (getcwd(pathname, sizeof(pathname)) == NULL ) 
     { 
-        printf("Error getting path\n"); 
+        printf("Error getting pathname\n"); 
         exit(0);
     }
     printf("Current Working Directory = %s\n",pathname);
@@ -62,28 +63,32 @@ int main()
 
     printf("Number of files = %d\n",count);
 
-    for (int i = 1; i < count + 1; ++i) 
+    for (int i = 0; i < count; ++i) 
     {
         char path[PATH_MAX];
         int n = snprintf(path, sizeof(path), "%s/%s", pathname, files[i]->d_name);
-        if (n < 0 || n < sizeof(path))
+        if (n < 0 || n > sizeof(path))
         {
             printf("Error getting path\n"); 
             exit(0);
         }
 
         if (stat(path, &stats) != 0) 
-        {           // use lstat(full, &st) para não seguir symlink
+        {           
             printf("Erro ao acessar os stats");
             exit(0);
         }
 
         // TODO converter time para dias
+        long tempo_dias = (long)(difftime(now, stats.st_mtime) / (60 * 60 * 24));
 
-        printf("%s     inode %ld      size: %d    age: %ld\n", files[i-1]->d_name, files[i-1]->d_ino, files[i-1]->d_reclen, files[i-1]->d_type);
+        printf("%s     inode %ld      size: %ld    age: %ld\n", files[i]->d_name, files[i]->d_ino, stats.st_size, tempo_dias);
     }
 
     printf("\n"); /* flush buffer */
+    
+    for (int i = 0; i < count; ++i) free(files[i]);
     free(files);
+
     return 0;
 }
