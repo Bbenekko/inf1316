@@ -366,16 +366,16 @@ CONCLUSÃO
 No código, foi criada uma função recursiva chamada percorreDirs que recebe o nome do diretório,
 por isso na main foi passado o '.' que representa o diretório atual. Com isso, é criado um 
 stream de diretório com a função "opendir" e depois é feito um while com a função "readdir" 
-que uma entrada do diretório por vez e retorna uma struct dirent que contêm o nome do objeto 
+que uma entrada do diretório por vez e retorna uma struct dirent que contém o nome do objeto 
 no campo d_name. Esse while serve para olhar o que tem dentro do diretório que não seja outro diretório.
 Com isso, é utilizado o snprintf para criar o caminho total usando o path + o nome do arquivo/diretório no molde correto. Com o caminho todo, usa-se a função stat que contém as 
-informações do arquivo/diretório. Depois há um if que vê se é realmente um aruivo ou se é um diretório.
-Foi escolhida essa forma de escreer pois a do exemplo no material era antiga e o vs code considerava como
+informações do arquivo/diretório. Depois há um if que vê se é realmente um arquivo ou se é um diretório.
+Foi escolhida essa forma de escrever pois a do exemplo no material era antiga e o vs code considerava como
 erro, então esse novo modo foi utilizado para driblar esse problema. Se for um diretório, a própria 
 função é chamada novamente e a variável total é acrescida com o valor que a função retorna. Se não 
-for um diretório, ele apenas printa o tamanho o caminho o arquivo e soma a qtd de bytes com o total já existente.
-Depois o stream de diretórioé fechado e o calor total retornado. Portanto, a recursão foi utilizada
-Para percorrer os diretórios que dentro de outros diretórios. 
+for um diretório, ele apenas printa o caminho do arquivo e soma a quantidade de bytes com o total já existente.
+Depois o stream de diretório é fechado e o valor total retornado. Portanto, a recursão foi utilizada
+Para percorrer os diretórios que estão dentro de outros diretórios. 
 
 -----------------------------------------------------
 
