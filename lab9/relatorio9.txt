@@ -1,244 +1,284 @@
 Bento Bruno Contarini Gonçalves  -  2311122
 Mayara Ramos Damazio - 2210833
 
-Questão 1) Execute o programa Corrida de Sapo algumas vezes e
-analise os resultados sobre a ordem de chegada dos sapos. 
-Obs: compile com a opção –lpthread
+Questão 1) Use o programa listaarquivo.c para imprimir o
+numero de inode, o tamanho (em bytes) e a idade em
+dias de cada arquivo do diretório corrente. Lembre-se
+que stat() espera o path completo do arquivo
 
 -----------------------------------------------------
-ARQUIVO corrida_dos_sapos.c
+ARQUIVO ex1.c
 
-#include <pthread.h>
+#define _DEFAULT_SOURCE  // garante scandir/alphasort no glibc moderno
+#include <dirent.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
+#include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <sys/stat.h>
+#include <time.h>
 
-#define NUM_THREADS 5
-#define PULO_MAXIMO 100
-#define DESCANSO_MAXIMO 1
-#define DISTANCIA_PARA_CORRER 100
-static int classificacao = 1;
-static pthread_mutex_t lock;
-static char * resp[200];
-static int cont = 0;
+char pathname[PATH_MAX];
 
-void *Correr(void *sapo)
+#define FALSE 0
+#define TRUE 1
+
+int file_select(const struct dirent *entry)
 {
-    int pulos = 0;
-    int distanciaJaCorrida = 0;
-    while (distanciaJaCorrida <= DISTANCIA_PARA_CORRER) 
-    {
-        int pulo = rand() % PULO_MAXIMO;
-        distanciaJaCorrida += pulo;
-        pulos++;
-        printf("Sapo %d pulou\n", (int) sapo);
-        int descanso = rand() % DESCANSO_MAXIMO;
-        sleep(descanso);
-    }
-    printf("Sapo %d chegou na posicaoo %d com %d pulos\n", (int) sapo, classificacao, pulos);
-    cont++;
-    classificacao++;
-    pthread_exit(NULL);
+    if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0))
+    return (FALSE);
+    else
+    return (TRUE);
 }
 
-int main()
+/* int file_select ( struct direct *entry)
 {
-    classificacao =1;
-    pthread_t threads[NUM_THREADS];
-    int t;
-    printf("Corrida iniciada ... \n");
-    for(t=0;t < NUM_THREADS;t++) pthread_create(&threads[t], NULL, Correr, (void *) t);
-    for(t=0;t < NUM_THREADS; t++) pthread_join(threads[t],NULL);
-    printf("\n Acabou!!\n");
-    pthread_exit(NULL);
+ char *ptr;
+ char *rindex(char *s, char c);
+
+ if ((strcmp(entry->d_name, ".")== 0) || (strcmp(entry->d_name, "..") == 0))
+ return (FALSE);
+ //Check for filename extensions 
+ ptr = rindex(entry->d_name, '.')
+ if ((ptr != NULL) && ((strcmp(ptr, ".c") == 0) || (strcmp(ptr, ".h") == 0) ||
+ (strcmp(ptr, ".o") == 0) ))
+return (TRUE);
+ else
+return(FALSE);
+}  */
+
+int main() 
+{
+    struct dirent **files;
+    struct stat stats;
+    int count;
+    time_t now = time(NULL);
+
+    if (getcwd(pathname, sizeof(pathname)) == NULL ) 
+    { 
+        printf("Error getting pathname\n"); 
+        exit(0);
+    }
+    printf("Current Working Directory = %s\n",pathname);
+    
+    count = scandir( pathname, &files, file_select, alphasort);
+
+    /* If no files found, make a non-selectable menu item */
+    if (count <= 0) 
+    { 
+        printf("No files in this directory\n"); 
+        exit(0);
+    }
+
+    printf("Number of files = %d\n",count);
+
+    for (int i = 0; i < count; ++i) 
+    {
+        char path[PATH_MAX];
+        int n = snprintf(path, sizeof(path), "%s/%s", pathname, files[i]->d_name);
+        if (n < 0 || n > sizeof(path))
+        {
+            printf("Error getting path\n"); 
+            exit(0);
+        }
+
+        if (stat(path, &stats) != 0) 
+        {           
+            printf("Erro ao acessar os stats");
+            exit(0);
+        }
+
+        // TODO converter time para dias
+        long tempo_dias = (long)(difftime(now, stats.st_mtime) / (60 * 60 * 24));
+
+        printf("%s     inode %ld      size: %ld    age: %ld\n", files[i]->d_name, files[i]->d_ino, stats.st_size, tempo_dias);
+    }
+
+    printf("\n"); /* flush buffer */
+    
+    for (int i = 0; i < count; ++i) free(files[i]);
+    free(files);
+
+    return 0;
 }
 
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO
-$gcc -Wall -o corrida corrida_dos_sapos.c -lpthread
-$./corrida
+$gcc -Wall -o ex1 ex1.c
+$./ex1
 -----------------------------------------------------
-RESULTADO 1
+RESULTADO
 
-Corrida iniciada ... 
-Sapo 1 pulou
-Sapo 2 pulou
-Sapo 0 pulou
-Sapo 3 pulou
-Sapo 2 pulou
-Sapo 4 pulou
-Sapo 0 pulou
-Sapo 1 pulou
-Sapo 3 pulou
-Sapo 2 chegou na posicaoo 1 com 2 pulos
-Sapo 4 pulou
-Sapo 1 chegou na posicaoo 2 com 2 pulos
-Sapo 3 chegou na posicaoo 3 com 2 pulos
-Sapo 0 chegou na posicaoo 2 com 2 pulos
-Sapo 4 chegou na posicaoo 5 com 2 pulos
-
-Acabou!!
-
-RESULTADO 2
-
-Corrida iniciada ... 
-Sapo 0 pulou
-Sapo 2 pulou
-Sapo 1 pulou
-Sapo 0 pulou
-Sapo 3 pulou
-Sapo 2 pulou
-Sapo 4 pulou
-Sapo 4 pulou
-Sapo 1 pulou
-Sapo 0 chegou na posicaoo 1 com 2 pulos
-Sapo 3 pulou
-Sapo 2 chegou na posicaoo 2 com 2 pulos
-Sapo 1 pulou
-Sapo 3 chegou na posicaoo 3 com 2 pulos
-Sapo 4 pulou
-Sapo 1 pulou
-Sapo 4 chegou na posicaoo 4 com 3 pulos
-Sapo 1 chegou na posicaoo 5 com 4 pulos
-
-Acabou!!
+Current Working Directory = /home/neco/Documents/sistemas_operacionais/inf1316/lab9/1e2
+Number of files = 6
+ex1     inode 2994142      size: 13208    age: 0
+ex1.c     inode 2994143      size: 2267    age: 0
+ex2     inode 2994243      size: 13208    age: 0
+ex2.c     inode 2994183      size: 2298    age: 0
+rickroll.txt     inode 2994145      size: 27666    age: 0
+teste.txt     inode 2994146      size: 15    age: 0
 
 -----------------------------------------------------
 CONCLUSÃO
 
-Após compilar o programa com a opção -lpthread que diz ao linker que é para incluir 
-a biblioteca de Threads e rodar o executável, é perceptível que a ordem em que os 
-sapos chegam são diferentes a cada vez que o executável é executado. Isso mostra bem 
-a concorrência entre as threads em que não há uma ordem correta de quando cada uma é
-executada. Além disso, também é perceptível uma das características de threads: o 
-compartilhamento das variáveis de modo que onde houve mudança, no caso do acréscimo da
-variável em que o acréscimo em uma thread era percebida pela outra o que não acontece 
-entre criação de processos filhos. É importante comentar que no resultado 1 houve um 
-falso empate. Parece que 2 sapos chegaram ao mesmo tempo, mas na verdade, isso ocorre pois 
-quando o primeiro printa, entre o tempo do final do print e dele incrementar o contador a 
-thread que representa o outro sapo printa também e o modifico, o que representa um falso empate.  
+Para a realização da atividade, precisei alterar o código listaarquivo original, 
+pois não consegui compilar com as bilbiotecas utilizadas (troquei para versões mais atuais).
+Para adicionar o inode, basta puxar da struct dirent (antiga direct).
+Para adicioanr o tamanho e os dias, precisei puxar as informações da strutura stat dos arquivos,
+e assim consegui puxar essas informações. Para os dias, precisei transformar de segundos para dias,
+visto que a estrutura stat guarda apenas em segundos.
+Também foram criados outros arquivos (.txt) para mostrar o programa funcionando!
+A age está 0 pois todos os arquivos foram criados hoje.
 
 -----------------------------------------------------
 
 Questão 2) 
-Usando mutex, modifique o programa Corrida de Sampo
-para que o problema identificado anteriormente não ocorra.
+Modifique o programa anterior para mostrar o número de
+links que cada arquivo possui. Depois, no diretório
+corrente, execute o o comando da shell
+ln <arquivo> <nomeLink> e veja o que mudou na
+saída de seu programa
 -----------------------------------------------------
-ARQUIVO corrida_com_mutex.c
+ARQUIVO ex2.c
 
-#include <pthread.h>
+#define _DEFAULT_SOURCE  // garante scandir/alphasort no glibc moderno
+#include <dirent.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>
+#include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <sys/stat.h>
+#include <time.h>
 
-#define NUM_THREADS 5
-#define PULO_MAXIMO 100
-#define DESCANSO_MAXIMO 1
-#define DISTANCIA_PARA_CORRER 100
-static int classificacao = 1;
-static pthread_mutex_t lock;
-static char * resp[200];
-static int cont = 0;
+char pathname[PATH_MAX];
 
-void *Correr(void *sapo)
+#define FALSE 0
+#define TRUE 1
+
+int file_select(const struct dirent *entry)
 {
-    int pulos = 0;
-    int distanciaJaCorrida = 0;
-    while (distanciaJaCorrida <= DISTANCIA_PARA_CORRER) 
-    {
-        int pulo = rand() % PULO_MAXIMO;
-        distanciaJaCorrida += pulo;
-        pulos++;
-        printf("Sapo %d pulou\n", (int) sapo);
-        int descanso = rand() % DESCANSO_MAXIMO;
-        sleep(descanso);
+    if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0))
+    return (FALSE);
+    else
+    return (TRUE);
+}
+
+/* int file_select ( struct direct *entry)
+{
+ char *ptr;
+ char *rindex(char *s, char c);
+
+ if ((strcmp(entry->d_name, ".")== 0) || (strcmp(entry->d_name, "..") == 0))
+ return (FALSE);
+ //Check for filename extensions 
+ ptr = rindex(entry->d_name, '.')
+ if ((ptr != NULL) && ((strcmp(ptr, ".c") == 0) || (strcmp(ptr, ".h") == 0) ||
+ (strcmp(ptr, ".o") == 0) ))
+return (TRUE);
+ else
+return(FALSE);
+}  */
+
+int main() 
+{
+    struct dirent **files;
+    struct stat stats;
+    int count;
+    time_t now = time(NULL);
+
+    if (getcwd(pathname, sizeof(pathname)) == NULL ) 
+    { 
+        printf("Error getting pathname\n"); 
+        exit(0);
     }
-    pthread_mutex_lock( &lock); 
-    printf("Sapo %d chegou na posicaoo %d com %d pulos\n", (int) sapo, classificacao, pulos);
-    cont++;
-    pthread_mutex_unlock( &lock );
-    classificacao++;
-    pthread_exit(NULL);
+    printf("Current Working Directory = %s\n",pathname);
+    
+    count = scandir( pathname, &files, file_select, alphasort);
+
+    /* If no files found, make a non-selectable menu item */
+    if (count <= 0) 
+    { 
+        printf("No files in this directory\n"); 
+        exit(0);
+    }
+
+    printf("Number of files = %d\n",count);
+
+    for (int i = 0; i < count; ++i) 
+    {
+        char path[PATH_MAX];
+        int n = snprintf(path, sizeof(path), "%s/%s", pathname, files[i]->d_name);
+        if (n < 0 || n > sizeof(path))
+        {
+            printf("Error getting path\n"); 
+            exit(0);
+        }
+
+        if (stat(path, &stats) != 0) 
+        {           
+            printf("Erro ao acessar os stats");
+            exit(0);
+        }
+
+        // TODO converter time para dias
+        long tempo_dias = (long)(difftime(now, stats.st_mtime) / (60 * 60 * 24));
+
+        printf("%s     inode %ld      size: %ld    age: %ld    nLinks: %ld\n", files[i]->d_name, files[i]->d_ino, stats.st_size, tempo_dias, stats.st_nlink);
+    }
+
+    printf("\n"); /* flush buffer */
+    
+    for (int i = 0; i < count; ++i) free(files[i]);
+    free(files);
+
+    return 0;
 }
 
-int main()
-{
-    classificacao =1;
-    pthread_t threads[NUM_THREADS];
-    int t;
-    printf("Corrida iniciada ... \n");
-    for(t=0;t < NUM_THREADS;t++) pthread_create(&threads[t], NULL, Correr, (void *) t);
-    for(t=0;t < NUM_THREADS; t++) pthread_join(threads[t],NULL);
-    printf("\n Acabou!!\n");
-    pthread_exit(NULL);
-
-}
 
 -----------------------------------------------------
 COMPILAÇÃO E EXECUÇÃO PARTE 1
-$gcc -Wall -o corrida corrida_com_mutex.c -lpthread
-$./corrida 
+$gcc -Wall -o ex2 ex2.c 
+$./ex2
+
+COMPILAÇÃO E EXECUÇÃO PARTE 2
+$ln teste.txt teste2
+$./ex2
 
 -----------------------------------------------------
-RESULTADO 1
+RESULTADO 1 
 
-Corrida iniciada ... 
-Sapo 0 pulou
-Sapo 1 pulou
-Sapo 2 pulou
-Sapo 1 pulou
-Sapo 2 pulou
-Sapo 0 pulou
-Sapo 4 pulou
-Sapo 1 chegou na posicaoo 1 com 2 pulos
-Sapo 3 pulou
-Sapo 2 chegou na posicaoo 2 com 2 pulos
-Sapo 4 pulou
-Sapo 3 pulou
-Sapo 0 chegou na posicaoo 3 com 2 pulos
-Sapo 4 chegou na posicaoo 4 com 2 pulos
-Sapo 3 chegou na posicaoo 5 com 2 pulos
+Current Working Directory = /home/neco/Documents/sistemas_operacionais/inf1316/lab9/1e2
+Number of files = 6
+ex1     inode 2994142      size: 13208    age: 0    nLinks: 1
+ex1.c     inode 2994143      size: 2267    age: 0    nLinks: 1
+ex2     inode 2994243      size: 13208    age: 0    nLinks: 1
+ex2.c     inode 2994183      size: 2298    age: 0    nLinks: 1
+rickroll.txt     inode 2994145      size: 27666    age: 0    nLinks: 1
+teste.txt     inode 2994146      size: 15    age: 0    nLinks: 1
 
-RESULTADO 2
+RESULTADO 2 (Rodando o comando pedido)
 
-Corrida iniciada ... 
-Sapo 0 pulou
-Sapo 2 pulou
-Sapo 1 pulou
-Sapo 0 pulou
-Sapo 4 pulou
-Sapo 3 pulou
-Sapo 2 pulou
-Sapo 4 pulou
-Sapo 1 pulou
-Sapo 0 chegou na posicaoo 1 com 2 pulos
-Sapo 3 pulou
-Sapo 2 chegou na posicaoo 2 com 2 pulos
-Sapo 4 chegou na posicaoo 3 com 2 pulos
-Sapo 1 pulou
-Sapo 3 chegou na posicaoo 4 com 2 pulos
-Sapo 1 pulou
-Sapo 1 chegou na posicaoo 5 com 4 pulos
+Current Working Directory = /home/neco/Documents/sistemas_operacionais/inf1316/lab9/1e2
+Number of files = 7
+ex1     inode 2994142      size: 13208    age: 0    nLinks: 1
+ex1.c     inode 2994143      size: 2267    age: 0    nLinks: 1
+ex2     inode 2994243      size: 13208    age: 0    nLinks: 1
+ex2.c     inode 2994183      size: 2298    age: 0    nLinks: 1
+rickroll.txt     inode 2994145      size: 27666    age: 0    nLinks: 1
+teste.txt     inode 2994146      size: 15    age: 0    nLinks: 2
+teste2     inode 2994146      size: 15    age: 0    nLinks: 2
 
 -----------------------------------------------------
 
 CONCLUSÃO
 
-Para evitar empates falsos, foi utilizado um mutex em que a variável contadora
-foi a lock. Foram chamadas as funções que garantem a exclusão mútua pthread_mutex_lock()
-e pthread_mutex_unlock() respectivamente acima e abaixo das seguintes linhas de código:
-
-printf("Sapo %d chegou na posicaoo %d com %d pulos\n", (int) sapo, classificacao, pulos);
-cont++;
-
-Foram escolhidas essas linhas para serem englobada pela exclusão múltipla pois, assim que uma 
-thread entra na execução dessas linhas, as outras pausam. Então a que está executando consegue, 
-sem problemas, fazer o print e incrementar o cont de modo que a próxima que entrar nessa parte 
-já estará com a contagem certinha, não pode atropelar esse processo.
+É possível observar que o comando na shell criou um link entre o teste.txt e o teste2,
+e o código conseguiu detectar isso, sem aparentar nenhum erro.
+Para fazer essa parte, bastou pegar o nlinks da struct stat.
 
 -----------------------------------------------------
 
