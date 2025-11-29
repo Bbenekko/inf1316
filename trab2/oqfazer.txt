@@ -1,0 +1,18 @@
+Coisas que podemos modularizar:
+
+dividir as funções do servidor. São:
+
+Manipulação de diretórios DC:
+
+cria um novo subdiretório dirname em path do owner -  Bento
+
+retorna o novo path (string) já contendo dirname como sufixo, no home-dir de owner strlen será o tamanho da nova string, ou strlen < 0 com um código de erro - Maya
+
+remove o subdiretório dirname de path no home de owner strlen1 é o tamanho da string path e strlen2, é o número de caracteres de dirrname - Bento
+
+retorna o novo path (no home de owner) já sem dirname, ou strlen < 0 se com um código de erro - Maya 
+
+solicita o nome de todos os arquivos e subdiretórios no diretório path de owner - Maya 
+
+retorna os nomes de todos os arquivos/subdiretórios em path (de owner) em um unico char array, allfilenames, sendo que fstlstpositions[i] indica a
+posição inicial e final do i-ésimo nome em allfilenames (como na figura abaixo), e se é um subdiretório ou um arquivo, e nrnames é o número de nomes no diretório -Bento
