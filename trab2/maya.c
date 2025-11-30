@@ -69,6 +69,8 @@ void dl(Message* msg, DL_REP* response)
     struct dirent *entry;
     char path[100];
 
+    response->owner = msg->owner;
+
     strncpy(path, msg->pathName, msg->sizePathName);
     path[msg->sizePathName] = '\0';
 
@@ -110,13 +112,36 @@ void dl(Message* msg, DL_REP* response)
         {
             putNameInResponse(response, name, 0);
         }
-        
     }
-    response->owner = msg->owner;
     closedir(dir);
 }
 
-int main() {
+void rd(Message* msg, Message* response)
+{
+    FILE *file;
+    char path[100];
+
+    response->owner = msg->owner;
+
+    strncpy(path, msg->pathName, msg->sizePathName);
+    path[msg->sizePathName] = '\0';
+
+    file = fopen(path, "r");
+    if (!file) {
+        response->payload[0] = '\0';
+        return;
+    }
+
+    fseek(file, msg->offset * 16, SEEK_SET);
+    size_t bytesRead = fread(response->payload, 1, PAYLOAD_MAX, file);
+
+    if (bytesRead != PAYLOAD_MAX) {
+        response->payload[bytesRead] = '\0';
+    }
+    fclose(file);
+}
+
+/* int main() {
     Message msg;
     DL_REP dlResponse;
     strcpy(msg.pathName, "../lab9");
@@ -142,6 +167,40 @@ int main() {
                 temp,
                dlResponse.posicoes[i].ehSubdiretorio);
     }
+    return 0;
+} */
+
+int main() {
+    Message msg;
+    Message rdResponse;
+
+    strcpy(msg.pathName, "testfile.txt");
+    msg.sizePathName = strlen(msg.pathName);
+    msg.offset = 0;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 1;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 2;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 3;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 4;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
     return 0;
 }
 
