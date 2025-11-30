@@ -7,7 +7,7 @@ typedef struct
 {
     int posInicial;
     int posFinal;
-    int ehSubdiretorio;
+    int ehSubdiretorio; // ou 0 (arquivo) ou 1 (diretório)
 } fstlpositions;
 
 typedef struct
