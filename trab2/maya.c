@@ -58,17 +58,24 @@ void putNameInResponse(DL_REP* response, const char* name, int isDir)
     response->posicoes[response->nrnames].posFinal = response->posicoes[response->nrnames].posInicial + strlen(name) - 1;
     response->posicoes[response->nrnames].ehSubdiretorio = isDir;
     strcat(response->allfilesnames, name);
+    printf("response nrnames antes: %d\n", response->nrnames);
     response->nrnames += 1;
+    printf("response nrnames depois: %d\n", response->nrnames);
 }
 
 void dl(Message* msg, DL_REP* response)
 {
     DIR *dir;
     struct dirent *entry;
+    char path[100];
 
-    dir = opendir(msg->pathName);
+    strncpy(path, msg->pathName, msg->sizePathName);
+    path[msg->sizePathName] = '\0';
+
+    dir = opendir(path);
     if (!dir) {
-        perror(msg->pathName);
+        //perror(path);
+        printf("Retorno da funcao recursiva\n");
         return;
     }
 
@@ -80,13 +87,14 @@ void dl(Message* msg, DL_REP* response)
             continue;
 
         char pathname[MAXPATHLEN];
-        snprintf(pathname, sizeof(pathname), "%s/%s", msg->pathName, name);
+        snprintf(pathname, sizeof(pathname), "%s/%s", path, name);
         printf("name: %s\n", name);
 
         struct stat st;
         if (stat(pathname, &st) == -1) 
         {
-            perror(pathname);
+            //perror(pathname);
+            response->nrnames = -1;
             continue;
         }
 
@@ -104,6 +112,7 @@ void dl(Message* msg, DL_REP* response)
         }
         
     }
+    response->owner = msg->owner;
     closedir(dir);
 }
 
@@ -111,11 +120,13 @@ int main() {
     Message msg;
     DL_REP dlResponse;
     strcpy(msg.pathName, "../lab9");
+    msg.sizePathName = strlen(msg.pathName);
     dlResponse.allfilesnames[0] = '\0';
     dlResponse.nrnames = 0;
 
     dl(&msg, &dlResponse);
     printf("Nomes arquivos: %s\n", dlResponse.allfilesnames);
+    printf("Numero de nomes: %d\n", dlResponse.nrnames);
 
     for(int i = 0; i < dlResponse.nrnames; i++)
     {
@@ -123,7 +134,8 @@ int main() {
         temp[0] = '\0';
         printf("Posicao Inicial: %d\n", dlResponse.posicoes[i].posInicial);
         printf("Posicao Final: %d\n", dlResponse.posicoes[i].posFinal);
-        strncpy(temp, &dlResponse.allfilesnames[dlResponse.posicoes[i].posInicial],
+        strncpy(temp, 
+                &dlResponse.allfilesnames[dlResponse.posicoes[i].posInicial],
                 dlResponse.posicoes[i].posFinal - dlResponse.posicoes[i].posInicial + 1);
         temp[dlResponse.posicoes[i].posFinal - dlResponse.posicoes[i].posInicial + 1] = '\0';
         printf("Nome %d: %s, ehDir: %d\n", i,
@@ -132,3 +144,4 @@ int main() {
     }
     return 0;
 }
+
