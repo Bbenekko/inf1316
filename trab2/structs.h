@@ -1,4 +1,5 @@
-#define STR_MAX 300
+#define PATH_MAX 100
+#define PAYLOAD_MAX 16
 #define NAME_MAX 50
 #define ALLFILESNAME_MAX 1000
 
@@ -12,9 +13,9 @@ typedef struct
 typedef struct
 {
     int owner;
-    char pathName[STR_MAX];
+    char pathName[PATH_MAX];
     int sizePathName;
-    char payload[STR_MAX];
+    char payload[PAYLOAD_MAX];
     int offset;
     char dirName[NAME_MAX];
     int sizeDirName;
@@ -27,3 +28,4 @@ typedef struct
     fstlpositions posicoes[40];
     int nrnames;
 } DL_REP;
+ 
