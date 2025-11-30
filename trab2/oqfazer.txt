@@ -1,33 +1,6 @@
-Coisas que podemos modularizar:
+DC-REQ e DC-REP -> criação de arquivo - BENTO
+DL-REQ e DL-REP -> listagem de arquivo - MAYA
+DR-REQ e DR-REP -> remove de arquivo - VAZIO POR ENQUANTO
 
-dividir as funções do servidor. São:
-
-Manipulação de diretórios DC:
-
-cria um novo subdiretório dirname em path do owner -  Bento
-
-retorna o novo path (string) já contendo dirname como sufixo, no home-dir de owner strlen será o tamanho da nova string, ou strlen < 0 com um código de erro - Maya
-
-remove o subdiretório dirname de path no home de owner strlen1 é o tamanho da string path e strlen2, é o número de caracteres de dirrname - Bento
-
-retorna o novo path (no home de owner) já sem dirname, ou strlen < 0 se com um código de erro - Maya 
-
-solicita o nome de todos os arquivos e subdiretórios no diretório path de owner - Maya 
-
-retorna os nomes de todos os arquivos/subdiretórios em path (de owner) em um unico char array, allfilenames, sendo que fstlstpositions[i] indica a
-posição inicial e final do i-ésimo nome em allfilenames (como na figura abaixo), e se é um subdiretório ou um arquivo, e nrnames é o número de nomes no diretório -Bento
-
-Manipulação de arquivos:
-
-Lendo dados: Maya
-
-RD - REQ -> pede leitura de 16 bytes do arquivo path, de owner (Ax) a partir da posição offset. Obs: payload (16 bytes) está vazio pois não recebeu a resposta owner indica qual foi o  processo requisitante (processo A1-A5) - 
-
-RED - REP -> transfere 16 bytes lidos do arquivo path - de owner - (a partir de offset) em buffer payload. Obs: na ausência de erros, offset tem valor igual obtido em RD-REQ. Senão  volta código de erro (int negativo) owner é o mesmo da RD-REQ e é usado para que KernelSim identifique de quem é essa resposta. - 
-
-Escrevendo dados: Bento
-
-WR-REQ -> pede escrita dos 16 bytes em payload no arquivo path, pertencente a owner, a partir da posição offset. Obs: Se o arquivo em path não existir ainda - mas o
-prefixo do path estiver correto - o arquivo é criado. - 
-
-WR-REP -> confirma escrita de 16 bytes no arquivo path de owner (a partir de offset). Obs: payload (16 bytes) está vazio pois na confirmação de uma escrita não precsa retornas qualquer dado. E offset é igual ao valor em WR-REQ ou valor negativo se tiver havido erro. owner deve ser o mesmo de WR-REP. -
+RD-REQ e RD-REP -> read directory - MAYA
+WR-REQ e WR-REP -> write directory - BENTO

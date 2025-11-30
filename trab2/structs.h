@@ -1,5 +1,5 @@
 #define PATH_MAX 100
-#define PAYLOAD_MAX 16
+#define PAYLOAD_MAX 17 // inclui 0 /0
 #define NAME_MAX 50
 #define ALLFILESNAME_MAX 1000
 
@@ -13,6 +13,7 @@ typedef struct
 typedef struct
 {
     int owner;
+    char pathName;
     char pathName[PATH_MAX];
     int sizePathName;
     char payload[PAYLOAD_MAX];
