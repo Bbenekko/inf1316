@@ -1,8 +1,52 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "structs.h"
+
+void create_subDirectory(Message* dc_req, Message* dc_rep)
+{
+    // TODO função checa validade do path
+
+    // TODO talvez tenhamos que adicionar um path relativo ou algo do tipo
+
+    char aux[PATH_MAX];
+
+    int n = snprintf(aux, sizeof(aux), "%s/%s", dc_req->pathName, dc_req->dirName);
+
+    if (n > sizeof(aux) || n < 0 ) 
+    {
+        // path estourou o buffer ou snprintf inválido
+
+        // TODO CODIGO DE ERRO
+
+        dc_rep->sizePathName = -1;
+        return;
+    }
+    
+
+    if(mkdir(aux, 0777) == 0) 
+    {
+        dc_rep->owner = dc_req->owner;
+
+        strncpy(dc_rep->pathName, aux, sizeof(aux) - 1);
+        dc_rep->pathName[sizeof(aux) - 1] = '\0'; // Garantir terminação
+
+        dc_rep->sizePathName = (int)strlen(aux);
+
+        return;
+    }
+    else
+    {
+        // erro de criação de diretório
+        dc_rep->sizePathName = -1;
+
+        // TODO código de erro
+
+        return;
+    }
+}
 
 void write_file(Message* wr_req, Message* wr_rep)
 {
@@ -27,7 +71,13 @@ void write_file(Message* wr_req, Message* wr_rep)
             wr_rep->offset = -1;
             return;
         }
-        // TODO retorno de select
+        wr_rep->owner = wr_req->owner;
+        strcpy(wr_rep->pathName, ""); // retorna path vazio
+        wr_rep->sizePathName = 0;
+        strcpy(wr_rep->payload, "");
+        wr_rep->offset = wr_req->offset;
+
+        return;
     }
 
     FILE *original, *temporario;
@@ -46,7 +96,7 @@ void write_file(Message* wr_req, Message* wr_rep)
     size_original = ftell(original); // get current file pointer
     fseek(original, 0, SEEK_SET);
 
-    if(wr_req->payload < size_original)
+    if(wr_req->offset < size_original)
     {
         if ((temporario = fopen("temp.txt", "a")) == NULL) 
         {
@@ -72,7 +122,7 @@ void write_file(Message* wr_req, Message* wr_rep)
 
         wr_rep->owner = wr_req->owner;
         strcpy(wr_rep->pathName, wr_req->pathName);
-        wr_rep->sizePathName = wr_req->pathName;
+        wr_rep->sizePathName = wr_req->sizePathName;
         strcpy(wr_rep->payload, "");
         wr_rep->offset = wr_req->offset;
 
@@ -131,8 +181,9 @@ void write_file(Message* wr_req, Message* wr_rep)
         fclose(original);
 
         wr_rep->owner = wr_req->owner;
+        // TODO talvez trocar para strncpy por segurança?? estudar um pouco a fundo sobre isso
         strcpy(wr_rep->pathName, wr_req->pathName);
-        wr_rep->sizePathName = wr_req->pathName;
+        wr_rep->sizePathName = wr_req->sizePathName;
         strcpy(wr_rep->payload, "");
         wr_rep->offset = wr_req->offset;
 
