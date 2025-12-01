@@ -10,40 +10,71 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <libgen.h>
 
 
 // operacoes em arquivos
 
-
-//operacoes em diretorios
-
-void dl_req(Message msg, char* allFilesAndDirNames)
+void rd(Message* msg, Message* response)
 {
-    const char *path = msg.pathName;
-    DIR *dir;
-    struct dirent *entry;
+    FILE *file;
+    char path[100];
 
-    dir = opendir(path);
-    if (!dir) {
-        perror(path);
+    response->owner = msg->owner;
+
+    strncpy(path, msg->pathName, msg->sizePathName);
+    path[msg->sizePathName] = '\0';
+
+    file = fopen(path, "r");
+    if (!file) {
+        response->payload[0] = '\0';
         return;
     }
 
-    while ((entry = readdir(dir)) != NULL) {
-        const char *name = entry->d_name;
+    fseek(file, msg->offset * 16, SEEK_SET);
+    size_t bytesRead = fread(response->payload, 1, PAYLOAD_MAX, file);
 
-        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-            continue;
-
-        char pathname[MAXPATHLEN];
-        snprintf(pathname, sizeof(pathname), "%s/%s", path, name);
-
-        printf("%s:\n", name);
-        strcat(allFilesAndDirNames, name);
+    if (bytesRead != PAYLOAD_MAX) {
+        response->payload[bytesRead] = '\0';
     }
-
-    closedir(dir);
+    fclose(file);
 }
+
+/* int main() {
+    Message msg;
+    Message rdResponse;
+
+    strcpy(msg.pathName, "testfile.txt");
+    msg.sizePathName = strlen(msg.pathName);
+    msg.offset = 0;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 1;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 2;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 3;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    msg.offset = 4;
+
+    rd(&msg, &rdResponse);
+    printf("Payload lido: %s\n", rdResponse.payload);
+
+    return 0;
+} */
+
+//operacoes em diretorios
 
 void putNameInResponse(DL_REP* response, const char* name, int isDir)
 {
@@ -103,7 +134,6 @@ void dl(Message* msg, DL_REP* response)
         if (S_ISDIR(st.st_mode)) 
         {
             printf("%s:\n", pathname);
-            putNameInResponse(response, name, 1);
             Message newMsg;
             strcpy(newMsg.pathName, pathname); 
             dl(&newMsg, response);
@@ -116,30 +146,86 @@ void dl(Message* msg, DL_REP* response)
     closedir(dir);
 }
 
-void rd(Message* msg, Message* response)
-{
-    FILE *file;
-    char path[100];
+void removeRecursivo(Message* msg, Message* response)
+{    
+    DIR *dir;
+    struct dirent *entry;
 
-    response->owner = msg->owner;
+    char path[100];
 
     strncpy(path, msg->pathName, msg->sizePathName);
     path[msg->sizePathName] = '\0';
 
-    file = fopen(path, "r");
-    if (!file) {
-        response->payload[0] = '\0';
+    printf("Removendo recursivamente o diretorio: %s\n", path);
+
+    dir = opendir(path);
+    if (!dir) {
+        printf("Saindo da recursao\n");
+        perror(path);
         return;
     }
 
-    fseek(file, msg->offset * 16, SEEK_SET);
-    size_t bytesRead = fread(response->payload, 1, PAYLOAD_MAX, file);
+    while ((entry = readdir(dir)) != NULL) {
+        const char *name = entry->d_name;
 
-    if (bytesRead != PAYLOAD_MAX) {
-        response->payload[bytesRead] = '\0';
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+            continue;
+
+        printf("arquivo ou dir atual da remocao: %s\n", name);
+
+        char pathname[MAXPATHLEN];
+        snprintf(pathname, sizeof(pathname), "%s/%s", path, name);
+
+        struct stat st;
+        if (stat(pathname, &st) == -1) {
+            perror(pathname);
+            continue;
+        }
+
+        int ret = 0;
+        if (S_ISDIR(st.st_mode)) {
+            Message newMsg;
+            strcpy(newMsg.pathName, pathname); 
+            newMsg.sizePathName = strlen(newMsg.pathName);
+            removeRecursivo(&newMsg, response);
+            ret = rmdir(pathname);
+        } 
+        else {
+            ret = remove(pathname);
+        }
+        printf("Retorno da remocao de %s: %d\n", pathname, ret);
+        if (ret == -1) {
+            response->sizePathName = -1;
+            return;
+        }
     }
-    fclose(file);
+    closedir(dir);
 }
+
+void dr(Message* msg, Message* response)
+{ 
+    char path[100];
+
+    response->owner = msg->owner;
+    response->sizePathName = 0;
+
+    strncpy(path, msg->pathName, msg->sizePathName);
+    path[msg->sizePathName] = '\0';
+
+    printf("Iniciando remocao recursiva do diretorio: %s\n", path);
+
+    removeRecursivo(msg, response);
+    int ret = rmdir(msg->pathName);
+    printf("Retorno do rmdir final: %d\n", response->sizePathName);
+    if (response->sizePathName != -1 && ret != -1)
+    {
+        char* newPath = dirname(msg->pathName);
+        response->pathName[0] = '\0';
+        strcpy(response->pathName, newPath);
+        response->sizePathName = strlen(response->pathName);
+    }
+}
+
 
 /* int main() {
     Message msg;
@@ -170,7 +256,7 @@ void rd(Message* msg, Message* response)
     return 0;
 } */
 
-int main() {
+/* int main() {
     Message msg;
     Message rdResponse;
 
@@ -200,6 +286,25 @@ int main() {
 
     rd(&msg, &rdResponse);
     printf("Payload lido: %s\n", rdResponse.payload);
+
+    return 0;
+} */
+
+int main() {
+    Message msg;
+    Message drResponse;
+
+    strcpy(msg.pathName, "./testdir/subdir1");
+    msg.sizePathName = strlen(msg.pathName);
+    strcpy(msg.dirName, "subdir1");
+    msg.sizeDirName = strlen(msg.dirName);
+
+    dr(&msg, &drResponse);
+    if (drResponse.sizePathName == -1) {
+        printf("Erro ao remover o diretório.\n");
+    } else {
+        printf("Diretório removido com sucesso. Caminho: %s\n", drResponse.pathName);
+    }
 
     return 0;
 }
