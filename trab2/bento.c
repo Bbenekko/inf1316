@@ -3,25 +3,38 @@
 #include <string.h>
 #include <sys/stat.h>
 
-//TODO            LÓGICA DO A0 e testagem com a main da maya
-//TODO            LÓGICA DO A0 e testagem com a main da maya
-//TODO            LÓGICA DO A0 e testagem com a main da maya
+#include "teste.h"
 
-
-#include "structs.h"
+int temA0(char* string)
+{
+    if(strncmp("/A0", string, 3) == 0)
+    {
+        return 1; // possui A0
+    }
+    else return 0; // nao possui A0
+}
 
 void create_subDirectory(Message* dc_req, Message* dc_rep)
 {
-
+    char directory[4];
     char aux[PATH_MAX];
 
-    int n = snprintf(aux, sizeof(aux), "%s/%s", dc_req->pathName, dc_req->dirName);
+    if (temA0(dc_req->pathName))
+    {
+        snprintf(aux, sizeof(aux), "%s/%s", dc_req->pathName, dc_req->dirName);
+    }
+    else
+    {
+        snprintf(directory, 4, "/A%d", dc_req->owner);
 
-    if (n > sizeof(aux) || n < 0 ) 
+        snprintf(aux, sizeof(aux), ".%s%s/%s", directory, dc_req->pathName, dc_req->dirName);
+    }
+    
+    if (strlen(aux) >= sizeof(aux))
     {
         // path estourou o buffer ou snprintf inválido
 
-        perror("ERRO: create_subDirectory - Path estourou o buffer ou snprintf invalido");
+        perror("ERRO: create_subDirectory - Path estourou o buffer\n");
 
         dc_rep->sizePathName = -1;
         return;
@@ -31,6 +44,8 @@ void create_subDirectory(Message* dc_req, Message* dc_rep)
     if(mkdir(aux, 0777) == 0) 
     {
         dc_rep->owner = dc_req->owner;
+
+        printf("Criação de diretório bem sucedida!\n");
 
         strncpy(dc_rep->pathName, aux, sizeof(aux) - 1);
         dc_rep->pathName[sizeof(aux) - 1] = '\0'; // Garantir terminação
@@ -44,7 +59,8 @@ void create_subDirectory(Message* dc_req, Message* dc_rep)
         // erro de criação de diretório
         dc_rep->sizePathName = -1;
 
-        perror("ERRO: create_subdirectory - Erro na criação de diretório!");
+        perror("ERRO: create_subdirectory - Erro na criação de diretório!\n");
+        printf("\nPath: %s\n\n", aux);
 
         return;
     }
@@ -52,6 +68,30 @@ void create_subDirectory(Message* dc_req, Message* dc_rep)
 
 void write_file(Message* wr_req, Message* wr_rep)
 {
+    char aux[PATH_MAX];
+
+    if (temA0(wr_req->pathName))
+    {
+        strncpy(aux, wr_req->pathName, sizeof(aux) -1);
+        aux[sizeof(aux) - 1] = '\0';
+    }
+    else
+    {
+        char directory[4];
+        snprintf(directory, sizeof(directory), "/A%d", wr_req->owner);
+
+        int n = snprintf(aux, sizeof(aux), ".%s/%s", directory, wr_req->pathName);
+
+        if (n > sizeof(aux) || n < 0 ) 
+        {
+            // path estourou o buffer ou snprintf inválido
+
+            perror("ERRO: write_file - Path estourou o buffer ou snprintf invalido");
+
+            wr_rep->offset = -1;
+            return;
+        }
+    }
 
     // checa offset
     if(wr_req->offset % 16 != 0)
@@ -62,109 +102,72 @@ void write_file(Message* wr_req, Message* wr_rep)
     }
 
     // caso de deletar arquivo (é completamente diferente de limpar os primeiros 16 caracteres ????)
-    if(wr_req->offset == 0 && strcmp(wr_req->payload, ""))
+    if(wr_req->offset == 0 && strcmp(wr_req->payload, "") == 0)
     {
-        if(remove(wr_req->pathName)) // path relativo faltando  
+        if(remove(aux) != 0) // path relativo faltando  
         {
             // TODO erro ao deletar
             perror("ERRO: write_file - erro ao deletar arquivo!");
             wr_rep->offset = -1;
             return;
         }
+
+        printf("Arquivo deletado com sucesso!\n");
+
         wr_rep->owner = wr_req->owner;
         strcpy(wr_rep->pathName, ""); // retorna path vazio
         wr_rep->sizePathName = 0;
         strcpy(wr_rep->payload, "");
-        wr_rep->offset = wr_req->offset;
+        wr_rep->offset = 0;
 
         return;
     }
 
-    FILE *original, *temporario;
+    FILE *original;
     char flag_ja_inseriu = 0;
     int size_original;
     char ch;
 
-    if ((original = fopen(wr_req->pathName, "rw")) == NULL) 
+    if ((original = fopen(aux, "r+b")) == NULL) 
     {
-        perror("ERRO: write_file - Error opening original file");
+        // Se o arquivo não existe, tenta criar para leitura/escrita. O modo 'w+b' cria e trunca.
+        if ((original = fopen(aux, "w+b")) == NULL)
+        {
+            wr_rep->offset = -1;
+            perror("ERRO: write_file - Erro ao abrir/criar arquivo\n");
+
+            printf("\nPath: %s\n\n", aux);
+
+            return;
+        }
+    }
+
+    if (fseek(original, wr_req->offset, SEEK_SET) != 0) {
+        perror("ERRO: write_file - Erro ao posicionar ponteiro (fseek)\n");
+        fclose(original);
         wr_rep->offset = -1;
         return;
     }
 
-    // pegando tamanho
-    fseek(original, 0, SEEK_END); // seek to end of file
-    size_original = ftell(original); // get current file pointer
-    fseek(original, 0, SEEK_SET);
+    size_t payload_len = strlen(wr_req->payload);
+    size_t written = fwrite(wr_req->payload, 1, payload_len, original); 
 
-    if(wr_req->offset < size_original)
-    {
-        if ((temporario = fopen("temp.txt", "a")) == NULL) 
-        {
-            perror("ERRO: write_file - Error opening temporary file for writing");
-            wr_rep->offset = -1;
-            return;
-        }
-
-        for(int i = 0; i < wr_req->payload; i++)
-        {
-            ch = fgetc(original);
-            fputc(ch, temporario);
-        }
-
-        fputs(wr_req->payload, original);
-        fseek(original, 16, SEEK_CUR);
-       
-        for (int i = ftell(original); i < size_original; i++)
-        {
-            ch = fgetc(original);
-            fputc(ch, temporario);
-        }
-
-        wr_rep->owner = wr_req->owner;
-        strcpy(wr_rep->pathName, wr_req->pathName);
-        wr_rep->sizePathName = wr_req->sizePathName;
-        strcpy(wr_rep->payload, "");
-        wr_rep->offset = wr_req->offset;
-
+    if (written != payload_len) {
+        perror("ERRO: write_file - Erro durante a escrita (fwrite)");
         fclose(original);
-        fclose(temporario);
-
-        remove(wr_req->pathName); // remove o arquivo original
-        rename("temp.txt", wr_req->pathName);
-
-        return;
-
-    }
-       else // offset maior ou igual que o do arquivo
-    {
-        fclose(original);
-        if ((original = fopen(wr_req->pathName, "a")) == NULL) 
-        {
-            perror("Error opening original file for appending");
-            wr_rep->offset = -1;
-            return;
-        }
-
-        int qtd_pular = size_original - wr_req->offset;
-
-        for(int i = 0; i < qtd_pular; i += 16)
-        {
-            fputs(wr_req->payload, "                ");
-        }
-
-        fputs(wr_req->payload, original);
-
-        fclose(original);
-
-        wr_rep->owner = wr_req->owner;
-        strncpy(wr_rep->pathName, wr_req->pathName, wr_rep->sizePathName - 1);
-        wr_rep->pathName[wr_rep->sizePathName - 1] = '\0'; // Garantir terminação
-        wr_rep->sizePathName = wr_req->sizePathName;
-        strcpy(wr_rep->payload, "");
-        wr_rep->offset = wr_req->offset;
-
+        wr_rep->offset = -1;
         return;
     }
-    
+
+    // 6. Finalização e Resposta
+    fclose(original);
+
+    wr_rep->owner = wr_req->owner;
+    strncpy(wr_rep->pathName, aux, PATH_MAX - 1);
+    wr_rep->pathName[PATH_MAX - 1] = '\0';
+    wr_rep->sizePathName = (int)strlen(wr_rep->pathName);
+    wr_rep->offset = wr_req->offset; // Retorna o offset original
+
+    printf("write file bem sucedido. Escrito %zu bytes em offset %ld no arquivo %s\n", 
+           written, wr_req->offset, aux);
 }

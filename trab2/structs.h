@@ -13,7 +13,6 @@ typedef struct
 typedef struct
 {
     int owner;
-    char pathName;
     char pathName[PATH_MAX];
     int sizePathName;
     char payload[PAYLOAD_MAX];
