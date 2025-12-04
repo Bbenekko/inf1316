@@ -3,6 +3,8 @@
 #define NAME_MAX 50
 #define ALLFILESNAME_MAX 1000
 
+#define ROOT_directory "./SFSS-root-dir"
+
 typedef struct 
 {
     int posInicial;
