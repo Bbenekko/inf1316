@@ -18,7 +18,6 @@
 #endif
 
 #define ROPENMODE (O_RDONLY)
-#define WOPENMODE (O_WRONLY)
 
 #define SFSS_REPLY_PORT 12346
 #define SFSS_SERVER_PORT 12345
@@ -114,23 +113,21 @@ int main()
     char *nameExecs[] = {"ax1", "ax2", "ax3", "ax4", "ax5"};
     char **ptrNameExecs = nameExecs;
 
-    for (int i = 0; i < 5; i++)
-    {
-        ptrNameExecs = nameExecs + i;
-        int pid = fork();
-        if (pid == 0) // filho
-        {
-            printf("Executando filho!\n");
-            execle(ptrNameExecs[i], ptrNameExecs[i], NULL, (char *)0);
-            exit(1);
-        }
-        else
-        {
-            pIda[i].pid = pid;
-            kill(pid, SIGSTOP);
-        }
+    pidInterCont = fork();
+    if (!pidInterCont) {
+        execle(ptrNameExecs[0], ptrNameExecs[0], NULL, (char *)0);
+    } else {
+        // O KernelSim (pai) pausa o controller imediatamente
+        kill(pidInterCont, SIGSTOP); 
     }
+
+    configuraFifos(&fifoRq);
+
     kill(pidInterCont, SIGCONT);
+
+    indexPidCurrent = 0;
+    pIda[0].estado = 1; 
+    kill(pIda[0].pid, SIGCONT);
 
     pidInterCont = fork();
 
@@ -148,6 +145,8 @@ int main()
 
     puts("Tentativa de executar fifo!");
     configuraFifos(&fifoRq);
+
+    kill(pidInterCont, SIGCONT);
 
     char buf[200];
 

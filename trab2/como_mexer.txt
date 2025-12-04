@@ -87,3 +87,10 @@ O KernelSim irá:
 5.  Entrar no *loop* `while(1)` para gerenciar o sistema.
 
 A partir daí, o KernelSim gerencia as *system calls* dos $\text{A}_x$ enviando pacotes UDP para o `SFSS_server` e controlando a execução via sinais (`SIGSTOP`/`SIGCONT`) e interrupções.
+
+
+CASO DE ERRO:
+
+ipcs -m
+
+ipcrm -m 32768
