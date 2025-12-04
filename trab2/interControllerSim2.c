@@ -10,11 +10,7 @@
 #include <time.h>
 #include <signal.h>
 
-#include "kernelSim.h"
-
 #define FIFO_KERNEL_IN "kernelFifoInt"
-
-#define FIFO_KERNEL_OUT "kernelFifoOut"
 
 #define TIMESLICE 500000
 
@@ -39,55 +35,6 @@ void continueHandler(int signal)
     // A função intencionalmente não faz nada.
 }
 
-void paraPrograma()
-{
-    char aux = '3';
-    write(inKernelFIFO, &aux, 1);
-
-    close(outKernelFIFO);
-
-    FILE* fifo_text = fopen(FIFO_KERNEL_OUT, "r");
-    if (fifo_text == NULL) 
-    {
-        perror(RED"Erro na criação do fluxo de arquivo da FIFO!"RESET);
-        close(outKernelFIFO);
-        exit(0);
-    }
-
-    printf("LEGENDA: Estado: 0 - espera ; 1 - em andamento ; 2 terminado ; 3 - bloqueado\nDispositivo: Apenas se estiver bloqueado: 0 - nnao esta bloqueado ; 1 - D1; 2 - D2\nD1 e D2 - Mostra quantas vezes houve interrupções por esses dispositivos\n#------------------------------------------#\n|-PC-|-ESTADO-|-DISPOSITIVO-|-OP-|-D1-|-D2-|\n#------------------------------------------#\n");
-
-    for (int i = 0; i < 5; i++)
-    {
-        char buffer[20];
-        int pc, estado, dispositivo, d1, d2;
-        char op;
-        if (fgets(buffer, 20, fifo_text) == NULL) 
-        {
-            fprintf( stderr, RED"Erro ao ler o fluxo da FIFO!\n"RESET, FIFO_KERNEL_OUT);
-            break;
-        }
-        
-        if (sscanf(buffer, "%d %d %d %c %d %d\n", &pc, &estado, &dispositivo, &op, &d1, &d2) != 6)
-        {
-             fprintf( stderr, RED"Erro ao analisar dados da linha %d: %s\n"RESET, i + 1, buffer);
-             // Tenta imprimir o buffer lido para debug
-        }
-
-        printf("| %d |    %d    |    %d    | %c | %d | %d |\n", pc, estado, dispositivo, op, d1, d2);
-    }
-    printf("#------------------------------------------#\n");
-    fclose(fifo_text);
-
-    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
-    {
-        fprintf (stderr, RED"Erro ao reabrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
-        exit(1);
-    }
-
-    pause();
-    interrupcao = 0;
-}
-
 int main(void)
 {
     //signal(SIGINT, SIG_IGN);
@@ -97,23 +44,6 @@ int main(void)
     printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
 
     // Criação e abertura das FIFOs (comunicação entre kernel e controller)
-
-    unlink(FIFO_KERNEL_OUT);
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, RED"Erro ao criar FIFO %s\n"RESET, FIFO_KERNEL_OUT);
-            return -1;
-        }
-    }
-    puts (BLUE"Abrindo FIFO de saída do servidor!"RESET);
-
-    if ((outKernelFIFO = open (FIFO_KERNEL_OUT, O_RDONLY)) < 0)
-    {
-        fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_OUT);
-        return -2;
-    }
 
     unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
