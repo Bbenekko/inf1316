@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/sem.h>
 
 #include "fila.h"
 #include "semaforo.h"
@@ -93,7 +94,7 @@ int main()
 
     sfp_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sfp_sockfd < 0)
-        error("ERROR opening SFP socket");
+        perror("ERROR opening SFP socket");
 
     // Configura o endereço do KernelSim para escutar
     bzero((char *)&sfp_kerneladdr, sizeof(sfp_kerneladdr));
@@ -102,7 +103,7 @@ int main()
     sfp_kerneladdr.sin_port = htons((unsigned short)SFSS_REPLY_PORT);
 
     if (bind(sfp_sockfd, (struct sockaddr *)&sfp_kerneladdr, sizeof(sfp_kerneladdr)) < 0)
-        error("ERROR on SFP binding");
+        perror("ERROR on SFP binding");
 
     // Configurar o socket UDP como NÃO-BLOQUEANTE
     int flags = fcntl(sfp_sockfd, F_GETFL, 0);
@@ -120,7 +121,7 @@ int main()
         if (pid == 0) // filho
         {
             printf("Executando filho!\n");
-            execle(ptrNameExecs, ptrNameExecs, NULL, (char *)0);
+            execle(ptrNameExecs[i], ptrNameExecs[i], NULL, (char *)0);
             exit(1);
         }
         else

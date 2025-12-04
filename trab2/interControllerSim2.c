@@ -27,7 +27,6 @@ int interrupcao = 0;
 void stopHandler(int signal)
 {
     printf(YELLOW"\nController parado!!!\n"RESET);
-    interrupcao = 1;
 }
 
 void continueHandler(int signal)
@@ -67,7 +66,6 @@ int main(void)
 
     for (;;)
     {
-        if (interrupcao) paraPrograma();
         char msg_to_kernel;
         int prob1 = rand()%100 + 1;
         int prob2 = (rand()+1)%100 + 1;

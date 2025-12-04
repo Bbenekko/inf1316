@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/sem.h>
 #include <stdlib.h>
 #include <time.h>
 

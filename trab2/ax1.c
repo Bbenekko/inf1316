@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/sem.h>
 
 #include "trabalho.h"
 #include "semaforo.h"
