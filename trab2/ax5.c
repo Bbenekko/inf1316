@@ -65,7 +65,7 @@ int main(void)
 
 
     while (PC < MAX) {
-        usleep(100000);  // 0.1 s
+        usleep(1000000);  // 0.1 s
 
         semaforoP(semId);
         pIda->valorPC++;

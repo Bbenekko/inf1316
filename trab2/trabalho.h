@@ -121,4 +121,6 @@ void removeRecursivo(Message* msg, Message* response);
 
 void exclude_diretory(Message* msg, Message* response);
 
+void create_subDirectory(Message* dc_req, Message* dc_rep);
+
 void write_file(Message* wr_req, Message* wr_rep);

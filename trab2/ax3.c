@@ -68,7 +68,7 @@ int main(void)
         pIda->valorPC++;
         pIda->estado = 1;
         pIda->operacao = 'x';
-        usleep(100000);  // 0.1 s
+        usleep(1000000);  // 0.1 s
 
         int d = rand()%100 + 1;
         if (d < 15) {

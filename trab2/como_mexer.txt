@@ -10,11 +10,11 @@ Assumindo que todos os arquivos auxiliares (`fila.c`, `semaforo.c`, `trabalho.h`
 
 ```bash
 # 1. Compilar os programas de aplicação (Ax)
-gcc -o ax1 ax1.c -lrt -lpthread -lm -Wall
-gcc -o ax2 ax2.c -lrt -lpthread -lm -Wall
-gcc -o ax3 ax3.c -lrt -lpthread -lm -Wall
-gcc -o ax4 ax4.c -lrt -lpthread -lm -Wall
-gcc -o ax5 ax5.c -lrt -lpthread -lm -Wall
+gcc -o ax1 semaforo.c ax1.c -lrt -lpthread -lm -Wall
+gcc -o ax2 semaforo.c ax2.c -lrt -lpthread -lm -Wall
+gcc -o ax3 semaforo.c ax3.c -lrt -lpthread -lm -Wall
+gcc -o ax4 semaforo.c ax4.c -lrt -lpthread -lm -Wall
+gcc -o ax5 semaforo.c ax5.c -lrt -lpthread -lm -Wall
 
 # 2. Compilar os módulos auxiliares (fila e semaforo)
 gcc -c fila.c

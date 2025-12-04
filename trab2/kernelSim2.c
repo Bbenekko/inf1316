@@ -113,6 +113,20 @@ int main()
     configuraFifos(&fifoRq);
     puts("FIFO KERNEL IN criada e aberta para leitura.");
 
+    configuraFifos(&fifoRq);
+    puts("FIFO KERNEL IN criada e aberta para leitura.");
+
+    // b) Lançamento do InterControllerSim2 (Controller)
+    pidInterCont = fork();
+
+    if (!pidInterCont) // Filho (Controller)
+    {
+         execle("interControllerSim2", "interControllerSim2", NULL, (char *)0);
+    }
+    else // Pai (KernelSim)
+    {
+        kill(pidInterCont, SIGSTOP); // Controller parado
+    }
 
     char *nameExecs[] = {"ax1", "ax2", "ax3", "ax4", "ax5"};
 
@@ -132,6 +146,9 @@ int main()
             pIda[i].estado = 0; 
             kill(pid, SIGSTOP);
         }
+
+        setSemValue(semId);
+
         kill(pidInterCont, SIGCONT);
         printf("KernelSim: Controller liberado para iniciar IRQs.\n");
 
@@ -140,22 +157,6 @@ int main()
         kill(pIda[0].pid, SIGCONT);
         printf("KernelSim: Início da simulação. Processo A1 em execução.\n");
     }
-
-    
-    pidInterCont = fork();
-
-    if (!pidInterCont) // controller
-    {
-        printf("====================Tentativa de executar o controller!============================\n");
-        execle("interControllerSim2", "interControllerSim2", NULL, (char *)0);
-        printf("Não foi possível executar o controller!\n");
-        exit(1);
-    }
-    else 
-    {
-        kill(pidInterCont, SIGSTOP);
-    }
-    configuraFifos(&fifoRq); 
 
     kill(pidInterCont, SIGCONT);
 
