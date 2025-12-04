@@ -28,7 +28,7 @@ int main() {
     strcpy(in.pathName, "subdir1/teste.txt");
     in.sizePathName = sizeof(in.pathName);
     strcpy(in.payload, "Abluble");
-    in.offset = 0;
+    in.offset = 32;
 
     write_file(&in, &out);
 

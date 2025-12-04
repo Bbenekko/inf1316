@@ -2,6 +2,10 @@
     "files.associations": {
         "string.h": "c",
         "stdlib.h": "c",
+<<<<<<< HEAD
         "kernelsim.h": "c"
+=======
+        "libgen.h": "c"
+>>>>>>> refs/heads/bento
     }
 }
