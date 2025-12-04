@@ -78,7 +78,7 @@ int main()
         perror("shmget");
         exit(1);
     }
-    Resposta* pIda = (Resposta *) shmat (segmento2, 0, 0);
+    Resposta* pResp = (Resposta *) shmat (segmento2, 0, 0);
 
     int semId = semget (chaveSem, 1, 0666 | IPC_CREAT);
     printf("SemID: %d\n", semId);
@@ -125,6 +125,7 @@ int main()
     while(1)
     {
         char ch;
+        int ind;
 
         if(pauseInt)
         {
@@ -146,85 +147,122 @@ int main()
             kill(pidInterCont, SIGCONT);
         }
 
-        if (read (fifoRq, &ch, sizeof(ch)) > 0)
+        while(1)
         {
-            if(ch == '0')
+            semaforoP(semId);
+            for(int i = 0; i < 5; i++)
             {
-                if(vPids[indexPidCurrent].estado == 1)
-                {
-                    kill(vPids[indexPidCurrent].pid, SIGSTOP);
-                    vPids[indexPidCurrent].estado = 0;
-                    printf("kernel - processo %d bloqueado pelo timeslice\n", vPids[indexPidCurrent].pid);
-
-                }                
-
-                int proxId = (indexPidCurrent + 1) % 5;
-                for(int i = 0; i < 5; i++)
-                {
-                    if(vPids[proxId].estado == 0)
-                    {
-                        kill(vPids[proxId].pid, SIGCONT);
-                        printf("kernel - processo %d liberado pelo timeslice\n", vPids[indexPidCurrent].pid);
-                        vPids[proxId].estado = 1;
-                        indexPidCurrent = proxId;
-                        break;
-                    }
-
-                    proxId = (proxId + 1) % 5;
-                }                    
+                if ((pIda + i)->pronto == 1)
+                    ind = i;                  
             }
-            else if (ch == '1')
+            semaforoV(semId);
+        }
+
+        Info* infoPronto = pIda + ind;
+        Resposta* respPronto = pResp + ind;
+        semaforoP(semId);
+        if(infoPronto->isFile == 1) //arquivo
+        {
+            if(infoPronto->operacao == 'r')
             {
                 int pid = excluiFila(filaD1);
                 unsigned char ind = 0;
                 if (pid != -1)
                 {
                     ind = retornaIndPid(vPids, pid);
-                    vPids[ind].estado = 0;
-                    vPids[ind].dispositivo = 0;
+                    infoPronto->estado = 0;
                     vPids[ind].operacao = 0;
+                    
                     printf("kernel - processo %d liberado pelo D1\n", pid);
                 }
             }
-                
-        
-            else if(ch == '2')
+            else if(infoPronto->operacao == 'w')
             {
-                int pid = excluiFila(filaD2);
-                unsigned char ind = 0;
-                if (pid != -1)
-                {
-                    ind = retornaIndPid(vPids, pid);
-                    vPids[ind].estado = 0;
-                    vPids[ind].dispositivo = 0;
-                    vPids[ind].operacao = 0;
-                    printf("kernel - processo %d liberado pelo D2\n", pid);
-                }
+
+            }
+            else if(infoPronto->operacao == 'e')
+            {
+
             }
 
-            // interrupção do controller
-            else if (ch == '3')
-            {
-                // TODO mandar os dados de print para o controler!!
-                for(int i = 0; i < 5; i++)
-                {
-                    kill(vPids[i].pid, SIGSTOP);
-                    char buffer[30];
-                    printf("Dados para a tabela do controler enviados!\n");
-                    int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD1);
-                    printf(buffer);
-                    if (write(fifoOut, buffer, len) == -1) 
-                    {
-                        perror("Erro ao enviar dados pela FIFO de saída da kernel!");
-                        close(fifoOut);
-                        close(fifoRq);
-                        close(fifoSc);
-                        exit(0);
-                    }
-                }
-            }
 
+
+
+            if(vPids[indexPidCurrent].estado == 1)
+            {
+                kill(vPids[indexPidCurrent].pid, SIGSTOP);
+                vPids[indexPidCurrent].estado = 0;
+                printf("kernel - processo %d bloqueado pelo timeslice\n", vPids[indexPidCurrent].pid);
+
+            }                
+
+            int proxId = (indexPidCurrent + 1) % 5;
+            for(int i = 0; i < 5; i++)
+            {
+                if(vPids[proxId].estado == 0)
+                {
+                    kill(vPids[proxId].pid, SIGCONT);
+                    printf("kernel - processo %d liberado pelo timeslice\n", vPids[indexPidCurrent].pid);
+                    vPids[proxId].estado = 1;
+                    indexPidCurrent = proxId;
+                    break;
+                }
+
+                proxId = (proxId + 1) % 5;
+            }                    
         }
+        else if (ch == '1')
+        {
+            int pid = excluiFila(filaD1);
+            unsigned char ind = 0;
+            if (pid != -1)
+            {
+                ind = retornaIndPid(vPids, pid);
+                vPids[ind].estado = 0;
+                vPids[ind].dispositivo = 0;
+                vPids[ind].operacao = 0;
+                printf("kernel - processo %d liberado pelo D1\n", pid);
+            }
+        }
+            
+    
+        else if(ch == '2')
+        {
+            int pid = excluiFila(filaD2);
+            unsigned char ind = 0;
+            if (pid != -1)
+            {
+                ind = retornaIndPid(vPids, pid);
+                vPids[ind].estado = 0;
+                vPids[ind].dispositivo = 0;
+                vPids[ind].operacao = 0;
+                printf("kernel - processo %d liberado pelo D2\n", pid);
+            }
+        }
+
+        // interrupção do controller
+        else if (ch == '3')
+        {
+            // TODO mandar os dados de print para o controler!!
+            for(int i = 0; i < 5; i++)
+            {
+                kill(vPids[i].pid, SIGSTOP);
+                char buffer[30];
+                printf("Dados para a tabela do controler enviados!\n");
+                int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD1);
+                printf(buffer);
+                if (write(fifoOut, buffer, len) == -1) 
+                {
+                    perror("Erro ao enviar dados pela FIFO de saída da kernel!");
+                    close(fifoOut);
+                    close(fifoRq);
+                    close(fifoSc);
+                    exit(0);
+                }
+            }
+        }
+
+
 
         if(read (fifoSc, buf, sizeof(buf)) > 0)
         {

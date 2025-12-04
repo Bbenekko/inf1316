@@ -93,7 +93,8 @@ int main(void)
             if (d % 2) // se par manipula arquivo
             {
 
-                int chooseFile = rand()%5;
+                 pIda->isFile = 1;
+int chooseFile = rand()%5;
                 strcat(pIda->subdir, fileNames[chooseFile]);
 
                 int qtdOffset = rand()%7;

@@ -10,7 +10,7 @@
 #include <time.h>
 #include <signal.h>
 
-#include "kernelSim.h"
+#include "trabalho.h"
 
 #define FIFO_KERNEL_IN "kernelFifoInt"
 //#define FIFO_KERNEL_OUT "kernelFifoOut"

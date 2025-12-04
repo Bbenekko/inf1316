@@ -91,6 +91,7 @@ int main(void)
             if (d % 2) // se par manipula arquivo
             {
 
+                 pIda->isFile = 1;
                 int chooseFile = rand()%5;
                 strcat(pIda->subdir, fileNames[chooseFile]);
 
