@@ -1,0 +1,89 @@
+Para rodar o seu **KernelSim** e iniciar a simulação completa no Fedora Linux, você precisa seguir vários passos. Isso envolve: **compilar** todos os componentes (KernelSim, SFSS\_server, $\text{A}_x$, interControllerSim2) e garantir que a estrutura de arquivos e diretórios (`SFSS-root-dir`) esteja configurada.
+
+Aqui está o guia passo a passo:
+
+## 1\. ⚙️ Compilação dos Componentes
+
+Você deve compilar todos os arquivos `.c` que compõem a simulação. Como você tem muitos arquivos (KernelSim, SFSS\_server, interControllerSim2, $\text{A}_x$ e seus auxiliares), a melhor forma é usar um script ou o `gcc` diretamente.
+
+Assumindo que todos os arquivos auxiliares (`fila.c`, `semaforo.c`, `trabalho.h`, etc.) estão no mesmo diretório:
+
+```bash
+# 1. Compilar os programas de aplicação (Ax)
+gcc -o ax1 ax1.c -lrt -lpthread -lm -Wall
+gcc -o ax2 ax2.c -lrt -lpthread -lm -Wall
+gcc -o ax3 ax3.c -lrt -lpthread -lm -Wall
+gcc -o ax4 ax4.c -lrt -lpthread -lm -Wall
+gcc -o ax5 ax5.c -lrt -lpthread -lm -Wall
+
+# 2. Compilar os módulos auxiliares (fila e semaforo)
+gcc -c fila.c
+gcc -c semaforo.c
+
+# 3. Compilar o InterControllerSim2
+gcc -o interControllerSim2 interControllerSim2.c -Wall
+
+# 4. Compilar o SFSS_server (incluindo as funções de arquivo)
+gcc -o SFSS_server SFSS_server.c SFSS_functions.c fila.o semaforo.o -Wall
+
+# 5. Compilar o KernelSim (O Core do SO)
+gcc -o kernelSim2 kernelSim2.c fila.o semaforo.o -Wall
+```
+
+**Nota sobre o `gcc`:** Você deve incluir todos os arquivos `.o` (como `fila.o` e `semaforo.o`) ao compilar os executáveis principais (`kernelSim2` e `SFSS_server`) se eles dependem desses módulos.
+
+-----
+
+## 2\. 📂 Configuração do Diretório Raiz (SFSS-root-dir)
+
+[cite_start]O servidor SFSS deve ser executado a partir de um diretório que servirá como a raiz (`/`) do seu sistema de arquivos SFP[cite: 108]. Seu código define isso como `./SFSS-root-dir`.
+
+Você precisa **criar esta pasta** e os diretórios *home* dos usuários ($\text{A0}$ a $\text{A5}$) antes de executar o servidor.
+
+```bash
+# Criar o diretório raiz do sistema de arquivos SFP
+mkdir SFSS-root-dir
+
+# Criar os diretórios home de cada processo
+mkdir SFSS-root-dir/A0
+mkdir SFSS-root-dir/A1
+mkdir SFSS-root-dir/A2
+mkdir SFSS-root-dir/A3
+mkdir SFSS-root-dir/A4
+mkdir SFSS-root-dir/A5
+
+# [cite_start]Nota: O diretório A0 é o home especial de compartilhamento[cite: 36].
+```
+
+-----
+
+## 3\. 🚀 Ordem de Execução (Lançando o Sistema)
+
+O sistema deve ser iniciado na seguinte ordem:
+
+### Passo 3.1: Iniciar o Servidor SFSS (O Sistema de Arquivos)
+
+O servidor deve estar rodando primeiro, escutando a porta que o KernelSim usará para enviar as requisições (por exemplo, `12345`).
+
+```bash
+./SFSS_server 12345 & 
+# O '&' (ampersand) coloca o servidor em background para que você possa usar o terminal novamente.
+```
+
+### Passo 3.2: Iniciar o KernelSim (O SO Simulador)
+
+O KernelSim iniciará o escalonamento, criará os processos $\text{A}_x$ e o `interControllerSim2`, e começará a escutar por requisições SFP e interrupções.
+
+```bash
+./kernelSim2
+```
+
+O KernelSim irá:
+
+1.  Criar o semáforo e a *shared memory*.
+2.  Criar os processos $\text{A}_x$ (que iniciarão parados com `SIGSTOP`).
+3.  Criar a FIFO.
+4.  Iniciar o *InterControllerSim2* (que enviará IRQ0, IRQ1, IRQ2 pela FIFO).
+5.  Entrar no *loop* `while(1)` para gerenciar o sistema.
+
+A partir daí, o KernelSim gerencia as *system calls* dos $\text{A}_x$ enviando pacotes UDP para o `SFSS_server` e controlando a execução via sinais (`SIGSTOP`/`SIGCONT`) e interrupções.
