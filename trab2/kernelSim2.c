@@ -14,16 +14,6 @@
 #define FIFO_KERNEL_IN "kernelFifoInt" 
 #endif
 
-//mensagens da kernel para o controller
-#ifndef FIFO_KERNEL_OUT
-#define FIFO_KERNEL_OUT "kernelFifoOut"
-#endif
-
-//mensagens dos processos para o kernel
-#ifndef FIFO_AX_IN  
-#define FIFO_AX_IN "axFifoOut"
-#endif
-
 #define ROPENMODE (O_RDONLY)
 #define WOPENMODE (O_WRONLY)
 
@@ -38,7 +28,7 @@ Fila* filaD1;
 Fila* filaD2;
 
 //arquivos FIFO
-int fifoRq, fifoSc, fifoOut;
+int fifoRq, fifoSc;
 
 int pidInterCont = 0;
 
@@ -49,7 +39,7 @@ int pauseInt = 0;
 
 unsigned char retornaIndPid(Info vPids[], int pid);
 void iniciaVetor(Info vInfos[]);
-void configuraFifos(int* fin, int* faX, int* fout);
+void configuraFifos(int* fin);
 void stopHandler(int num);
 
 int main()
@@ -118,7 +108,7 @@ int main()
     } 
 
     puts("Tentativa de executar fifo!");
-    configuraFifos(&fifoRq, &fifoSc, &fifoOut);
+    configuraFifos(&fifoRq);
 
     char buf [200];
 
@@ -152,7 +142,6 @@ int main()
         {
             semaforoP(semId);
             for(int i = 0; i < 5; i++)
-<<<<<<< Updated upstream
             {
                 if ((pIda + i)->pronto == 1)
                     ind = i;                  
@@ -165,49 +154,6 @@ int main()
         semaforoP(semId);
         if(infoPronto->isFile == 1) //arquivo
         {
-=======
-            {
-                if ((pIda + i)->pronto == 1)
-                {
-                    ind = i;
-                    break;
-                }                 
-            }
-            semaforoV(semId);
-        }
-
-        Info* infoPronto = pIda + ind;
-        Resposta* respPronto = pResp + ind;
-        semaforoP(semId);
-
-         if(infoPronto->estado == '0')
-            {
-                if(vPids[indexPidCurrent].estado == 1)
-                {
-                    kill(vPids[indexPidCurrent].pid, SIGSTOP);
-                    vPids[indexPidCurrent].estado = 0;
-                    printf("kernel - processo %d bloqueado pelo timeslice\n", vPids[indexPidCurrent].pid);
-                }                
-
-                int proxId = (indexPidCurrent + 1) % 5;
-                for(int i = 0; i < 5; i++)
-                {
-                    if(vPids[proxId].estado == 0)
-                    {
-                        kill(vPids[proxId].pid, SIGCONT);
-                        printf("kernel - processo %d liberado pelo timeslice\n", vPids[indexPidCurrent].pid);
-                        vPids[proxId].estado = 1;
-                        indexPidCurrent = proxId;
-                        break;
-                    }
-
-                    proxId = (proxId + 1) % 5;
-                }                    
-            }
-        if(infoPronto->isFile == 1) //arquivo
-        {
-
->>>>>>> Stashed changes
             if(infoPronto->operacao == 'r')
             {
                 int pid = excluiFila(filaD1);
@@ -285,29 +231,6 @@ int main()
             }
         }
 
-        // interrupção do controller
-        else if (ch == '3')
-        {
-            // TODO mandar os dados de print para o controler!!
-            for(int i = 0; i < 5; i++)
-            {
-                kill(vPids[i].pid, SIGSTOP);
-                char buffer[30];
-                printf("Dados para a tabela do controler enviados!\n");
-                int len = sprintf(buffer, "%d %d %d %c %d %d\n", vPids[i].valorPC, vPids[i].estado, vPids[i].dispositivo, vPids[i].operacao, vPids[i].qtdVzsD1, vPids[i].qtdVzsD1);
-                printf(buffer);
-                if (write(fifoOut, buffer, len) == -1) 
-                {
-                    perror("Erro ao enviar dados pela FIFO de saída da kernel!");
-                    close(fifoOut);
-                    close(fifoRq);
-                    close(fifoSc);
-                    exit(0);
-                }
-            }
-        }
-
-
 
         if(read (fifoSc, buf, sizeof(buf)) > 0)
         {
@@ -346,7 +269,7 @@ int main()
     }
 }
 //realiza a abertura das fifos
-void configuraFifos(int* fin, int* faX, int* fout)
+void configuraFifos(int* fin)
 {
     unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
@@ -362,41 +285,6 @@ void configuraFifos(int* fin, int* faX, int* fout)
     if ((*fin = open (FIFO_KERNEL_IN, ROPENMODE | O_NONBLOCK)) < 0)
     {
         fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_IN);
-        exit(-2);
-    }
-
-
-    unlink(FIFO_AX_IN);
-    if (access(FIFO_AX_IN, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_AX_IN, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_AX_IN);
-            exit(-1);
-        }
-        puts ("FIFO AX criada com sucesso");
-    } 
-
-    if ((*faX = open (FIFO_AX_IN, ROPENMODE | O_NONBLOCK)) < 0)
-    {
-        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_AX_IN);
-        exit(-2);
-    }
-
-    unlink(FIFO_KERNEL_OUT);
-    if (access(FIFO_KERNEL_OUT, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_KERNEL_OUT, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, "Erro ao criar FIFO %s\n", FIFO_KERNEL_OUT);
-            exit(-1);
-        }
-        puts ("FIFO KERNEL OUT criada com sucesso");
-    } 
-
-    if ((*fout = open (FIFO_KERNEL_OUT, WOPENMODE)) < 0)
-    {
-        fprintf (stderr, "Erro ao abrir a FIFO %s\n", FIFO_KERNEL_OUT);
         exit(-2);
     }
 }
