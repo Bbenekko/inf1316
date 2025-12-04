@@ -41,21 +41,15 @@ int main(void)
 
     printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
 
-    unlink(FIFO_KERNEL_IN);
-    if (access(FIFO_KERNEL_IN, F_OK) == -1)
-    {
-        if (mkfifo (FIFO_KERNEL_IN, S_IRUSR | S_IWUSR) != 0)
-        {
-            fprintf (stderr, RED"Erro ao criar FIFO %s\n"RESET, FIFO_KERNEL_IN);
-            return -1;
-        }
+    // Loop de tentativa de conexão caso o Kernel ainda não tenha criado o arquivo
+    while (access(FIFO_KERNEL_IN, F_OK) == -1) {
+        puts(YELLOW"Aguardando Kernel criar a FIFO..."RESET);
+        sleep(1);
     }
-    puts (BLUE"Abrindo FIFO de entrada do servidor!"RESET);
-    puts (YELLOW"Aguardando iniciação da kernel..."RESET);
 
-    pause(); // aguarda Kernel
-
-    if ((inKernelFIFO = open (FIFO_KERNEL_IN, O_WRONLY)) < 0)
+    // O open com O_WRONLY vai bloquear aqui até que o Kernel abra o outro lado (O_RDONLY)
+    // Isso serve como a sincronização perfeita, substituindo o pause().
+    if ((inKernelFIFO = open(FIFO_KERNEL_IN, O_WRONLY)) < 0)
     {
         fprintf (stderr, RED"Erro ao abrir a FIFO %s\n"RESET, FIFO_KERNEL_IN);
         return -2;
