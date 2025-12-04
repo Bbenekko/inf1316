@@ -142,11 +142,52 @@ void write_file(Message* wr_req, Message* wr_rep)
         }
     }
 
-    if (fseek(original, wr_req->offset, SEEK_SET) != 0) {
-        perror("ERRO: write_file - Erro ao posicionar ponteiro (fseek)\n");
+    if (fseek(original, 0, SEEK_END) != 0) {
+        perror("ERRO: write_file - Erro ao posicionar ponteiro (SEEK_END)\n");
         fclose(original);
         wr_rep->offset = -1;
         return;
+    }
+
+    int current_size = ftell(original); // ftell retorna a posição atual
+    printf("\n\n%d\n\n", current_size);
+
+    if (current_size == -1L) {
+        perror("ERRO: write_file - Erro ao obter o tamanho do arquivo (ftell)");
+        fclose(original);
+        wr_rep->offset = -1;
+        return;
+    }
+
+    // Se o offset requisitado é maior que o tamanho atual, preenchemos
+    if (wr_req->offset > current_size) {
+        int bytes_to_fill = (int)wr_req->offset - current_size;
+
+        // Caractere de preenchimento: espaço em branco (' ')
+        char fill_char = ' '; 
+        
+        printf("Preenchendo %ld bytes com espaços (' ') antes da escrita.\n", bytes_to_fill);
+        
+        // Escreve o espaço byte a byte
+        for (long i = 0; i < bytes_to_fill; i++) {
+            if (fwrite(&fill_char, 1, 1, original) != 1) {
+                perror("ERRO: write_file - Erro ao preencher vazio com espaços");
+                fclose(original);
+                wr_rep->offset = -1;
+                return;
+            }
+        }
+        // Após o loop, o ponteiro está AGORA no wr_req->offset
+    }
+    else
+    {
+        // Reposiciona o ponteiro para o offset do usuário para sobrescrever
+        if (fseek(original, wr_req->offset, SEEK_SET) != 0) {
+            perror("ERRO: write_file - Erro ao posicionar ponteiro (fseek SEEK_SET)");
+            fclose(original);
+            wr_rep->offset = -1;
+            return;
+        }
     }
 
     size_t payload_len = strlen(wr_req->payload);
