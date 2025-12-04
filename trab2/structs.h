@@ -1,7 +1,13 @@
 #define PATH_MAX 100
+<<<<<<< HEAD
 #define PAYLOAD_MAX 16
+=======
+#define PAYLOAD_MAX 17 // inclui 0 /0
+>>>>>>> refs/heads/bento
 #define NAME_MAX 50
 #define ALLFILESNAME_MAX 1000
+
+#define ROOT_directory "./SFSS-root-dir"
 
 typedef struct 
 {
