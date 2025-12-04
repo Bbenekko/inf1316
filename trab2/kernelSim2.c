@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <sys/shm.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <signal.h>
@@ -60,13 +61,39 @@ int main()
     filaD1 = criaFila();
     filaD2 = criaFila();
 
+    __key_t chaveMemVinda= 8751;
+    __key_t chaveMemResp = 8752;
+    __key_t chaveSem = 87511;
+
+    int segmento = shmget (chaveMemVinda, sizeof(Info) * 5, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    if(segmento < 0) {
+        perror("shmget");
+        exit(1);
+    }
+    Info* pIda = (Info *) shmat (segmento, 0, 0);
+    
+
+    int segmento2 = shmget (chaveMemResp, sizeof(Resposta) * 5, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    if(segmento2 < 0) {
+        perror("shmget");
+        exit(1);
+    }
+    Resposta* pIda = (Resposta *) shmat (segmento2, 0, 0);
+
+    int semId = semget (chaveSem, 1, 0666 | IPC_CREAT);
+    printf("SemID: %d\n", semId);
+
+    char* nameExecs[] = {"ax1", "ax2", "ax3", "ax4", "ax5"};
+    char** ptrNameExecs = nameExecs;
+
      for(int i = 0; i < 5; i++)
     {
+        ptrNameExecs = nameExecs + i;
         int pid = fork();
         if(pid == 0) //filho
         {           
             printf("Executando filho!\n");
-            execle("ax2", "ax2", NULL, (char*)0);
+            execle(ptrNameExecs, ptrNameExecs, NULL, (char*)0);
             exit(1);            
         }
         else

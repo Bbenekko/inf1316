@@ -21,6 +21,8 @@ int main(void)
     signal(SIGINT, SIG_IGN);
     pause();
 
+    int terminou = 0;
+
     time_t t;
     srand((unsigned) time(&t));
 
@@ -38,15 +40,15 @@ int main(void)
         perror("shmget");
         exit(1);
     }
-    Info* pIda = (int *) shmat (segmento, 0, 0);
+    Info* pIda = (Info *) shmat (segmento, 0, 0);
     pIda += 4; //ax2
 
-    int segmento2 = shmget (chaveMemIda, sizeof(Resposta) * 5, S_IRUSR | S_IWUSR);
+    int segmento2 = shmget (chaveMemResp, sizeof(Resposta) * 5, S_IRUSR | S_IWUSR);
     if(segmento2 < 0) {
         perror("shmget");
         exit(1);
     }
-    Resposta* pResp = (int *) shmat (segmento2, 0, 0);
+    Resposta* pResp = (Resposta *) shmat (segmento2, 0, 0);
     pResp += 4; //ax2
 
     int semId = semget (chaveSem, 1, 0666 | IPC_CREAT);
@@ -57,15 +59,17 @@ int main(void)
     pIda->estado = 0; // em andamento
     pIda->pid = getpid();
     pIda->modo = 0;
+    pResp->pronto = 0;
     semaforoV(semId);
 
 
     while (PC < MAX) {
+        usleep(100000);  // 0.1 s
+
         semaforoP(semId);
         pIda->valorPC++;
         pIda->estado = 1;
         pIda->operacao = 'x';
-        usleep(100000);  // 0.1 s
 
         int d = rand()%100 + 1;
         if (d < 15) {
@@ -143,9 +147,17 @@ int main(void)
         
         usleep(300000);
 
-        semaforoP(semId);
-        printf("AX2 - valorRetorno: %d - Resposta: %s\n", pResp->valorRetorno, pResp->dados);
-        semaforoV(semId);
+        while(!terminou)
+        {
+            semaforoP(semId);
+            if (pResp->pronto == 1)
+            {
+                printf("AX1 - valorRetorno: %d - Resposta: %s\n", pResp->valorRetorno, pResp->dados);
+
+                terminou = 1;
+            }
+            semaforoV(semId);
+        }
     }
     return 0;
 }

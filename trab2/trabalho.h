@@ -48,5 +48,6 @@ struct resposta
 {
     int valorRetorno;
     char dados[PAYLOAD_MAX];
+    int pronto; // 0 - nao ; 1 - sim
 };
  
