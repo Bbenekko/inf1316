@@ -151,7 +151,7 @@ int main(void)
             semaforoP(semId);
             if (pResp->pronto == 1)
             {
-                printf("AX1 - valorRetorno: %d - Resposta: %s\n", pResp->valorRetorno, pResp->dados);
+                printf("AX2 - valorRetorno: %d - Resposta: %s\n", pResp->valorRetorno, pResp->dados);
 
                 terminou = 1;
             }

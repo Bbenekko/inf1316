@@ -140,7 +140,7 @@ int chooseFile = rand()%5;
             pIda->estado = 3; // bloqueado
         }
 
-        printf("AX2 - PC: %d, operacao: %c, dir: %s, subdir: %s, offset: %d\n", pIda->valorPC, pIda->operacao, pIda->dir, pIda->subdir, pIda->offset);
+        printf("AX5 - PC: %d, operacao: %c, dir: %s, subdir: %s, offset: %d\n", pIda->valorPC, pIda->operacao, pIda->dir, pIda->subdir, pIda->offset);
 
         char buf[200];
 
@@ -153,7 +153,7 @@ int chooseFile = rand()%5;
             semaforoP(semId);
             if (pResp->pronto == 1)
             {
-                printf("AX1 - valorRetorno: %d - Resposta: %s\n", pResp->valorRetorno, pResp->dados);
+                printf("AX5 - valorRetorno: %d - Resposta: %s\n", pResp->valorRetorno, pResp->dados);
 
                 terminou = 1;
             }
