@@ -161,6 +161,12 @@ int main(void)
             semaforoV(semId);
         }
     }
+
+    shmdt (pIda);
+    shmctl (segmento, IPC_RMID, 0);
+
+    shmdt (pResp);
+    shmctl (segmento2, IPC_RMID, 0);
     return 0;
 }
 

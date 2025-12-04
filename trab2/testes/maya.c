@@ -44,7 +44,7 @@ void verifyPath(char path[], int sizePath, int owner)
 
 // operacoes em arquivos
 
-void rd(Message* msg, Message* response)
+void read_directory(Message* msg, Message* response)
 {
     FILE *file;
     char path[100];
@@ -312,27 +312,27 @@ void exclude_diretory(Message* msg, Message* response)
     msg.offset = 0;
     msg.owner = 2;
 
-    rd(&msg, &rdResponse);
+    read_directory(&msg, &rdResponse);
     printf("Payload lido: %s\n", rdResponse.payload);
 
     msg.offset = 1;
 
-    rd(&msg, &rdResponse);
+    read_directory(&msg, &rdResponse);
     printf("Payload lido: %s\n", rdResponse.payload);
 
     msg.offset = 2;
 
-    rd(&msg, &rdResponse);
+    read_directory(&msg, &rdResponse);
     printf("Payload lido: %s\n", rdResponse.payload);
 
     msg.offset = 3;
 
-    rd(&msg, &rdResponse);
+    read_directory(&msg, &rdResponse);
     printf("Payload lido: %s\n", rdResponse.payload);
 
     msg.offset = 4;
 
-    rd(&msg, &rdResponse);
+    read_directory(&msg, &rdResponse);
     printf("Payload lido: %s\n", rdResponse.payload);
 
     return 0;

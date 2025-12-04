@@ -70,8 +70,6 @@ int main(int argc, char **argv)
     while (1)
     {
 
-        // Adaptação no main do udpserver.c, dentro do loop while (1):
-
         clientlen = sizeof(clientaddr);
 
         /* recvfrom: receive a UDP datagram (the struct) */
@@ -83,24 +81,28 @@ int main(int argc, char **argv)
 
         printf("Server received %d bytes. Type: %d\n", n, request.type);
 
-        // 1. Processar a requisição e gerar a resposta
         SFP_Packet reply;
-        reply.type = request.type + 1;       // REQ -> REP
-        reply.msg.owner = request.msg.owner; // Ecoar o owner [cite: 106]
+        reply.type = request.type + 1;      
+        reply.msg.owner = request.msg.owner; 
 
         switch (request.type)
         {
         case SFP_WR_REQ:
-            // Chamar sua função de escrita:
-            // write_file(&request.msg, &reply.msg);
+            write_file(&request.msg, &reply.msg);
             break;
         case SFP_DC_REQ:
-            // Chamar sua função de criação de diretório:
-            // create_subDirectory(&request.msg, &reply.msg);
+             create_subDirectory(&request.msg, &reply.msg);
             break;
-        // ... outros casos
+        case SFP_DR_REQ:
+            removeRecursivo(&request.msg, &reply.msg);
+            break;
+        case SFP_DL_REQ:
+            list_directory(&request.msg, &reply.dl_rep);
+            break;  
+        case SFP_RD_REQ:
+            read_directory(&request.msg, &reply.msg);
+            break;
         default:
-            // Tratar erro de tipo
             break;
         }
 

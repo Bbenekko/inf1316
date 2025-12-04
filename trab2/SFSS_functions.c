@@ -3,11 +3,7 @@
 void verifyPath(char path[], int sizePath, int owner)
 {
     char temp[100];
-
-    printf("Caminho inicio: %s\n", path);
-
-    // Só um exemplo, ajuste a condição se precisar
-    printf("2 e 3 caractere: %c %c %c\n", path[2], path[3], path[4]);
+ 
     if (path[2] == 'A' && path[3] == '0' && path[4] == '/')
     {
          // Monta o caminho correto em temp
@@ -16,14 +12,11 @@ void verifyPath(char path[], int sizePath, int owner)
         // Copia já com '\0'
         strcpy(path, temp);
 
-        printf("Caminho final: %s\n", path);
         return;
     }
     
-    // Monta o caminho correto em temp
     snprintf(temp, sizeof(temp), ROOT_DIRECTORY"/A%d/%s", owner, path + 2);
 
-    // Copia já com '\0'
     strcpy(path, temp);
 
     printf("Caminho final: %s\n", path);
@@ -31,7 +24,7 @@ void verifyPath(char path[], int sizePath, int owner)
 
 // operacoes em arquivos
 
-void rd(Message* msg, Message* response)
+void read_directory(Message* msg, Message* response)
 {
     FILE *file;
     char path[100];
@@ -90,8 +83,6 @@ void dl(Message* msg, DL_REP* response)
     strncpy(path, msg->pathName, msg->sizePathName);
     path[msg->sizePathName] = '\0';
 
-    printf("Listando o diretorio: %s\n", path);
-
     dir = opendir(path);
     if (!dir) {
         perror(path);
@@ -109,7 +100,6 @@ void dl(Message* msg, DL_REP* response)
 
         char pathname[MAXPATHLEN];
         snprintf(pathname, sizeof(pathname), "%s/%s", path, name);
-        printf("name: %s\n", name);
 
         struct stat st;
         if (stat(pathname, &st) == -1) 
@@ -144,20 +134,16 @@ void list_directory(Message* msg, DL_REP* response)
     response->allfilesnames[0] = '\0';
     response->nrnames = 0;
 
-    printf("Listando o diretorio solicitado pelo usuario %s\n", msg->pathName);
-
     //copia o ./ para o path
     strncpy(path, msg->pathName, msg->sizePathName);
 
     //verifica se tem a0 ou nao
     verifyPath(msg->pathName, msg->sizePathName, msg->owner);
-    printf("path do diretorio a ser listado: %s\n", msg->pathName);
 
     /* strncpy(msg->pathName, path, strlen(path));*/
     msg->sizePathName = strlen(msg->pathName); 
 
     dl(msg, response);
-    printf("Numero de nomes listados: %d\n", response->nrnames);
 }
 
 void removeRecursivo(Message* msg, Message* response)
@@ -170,11 +156,8 @@ void removeRecursivo(Message* msg, Message* response)
     strncpy(path, msg->pathName, msg->sizePathName);
     path[msg->sizePathName] = '\0';
 
-    printf("Removendo recursivamente o diretorio: %s\n", path);
-
     dir = opendir(path);
     if (!dir) {
-        printf("Saindo da recursao\n");
         perror(path);
         return;
     }
@@ -207,7 +190,6 @@ void removeRecursivo(Message* msg, Message* response)
         else {
             ret = remove(pathname);
         }
-        printf("Retorno da remocao de %s: %d\n", pathname, ret);
         if (ret == -1) {
             response->sizePathName = -1;
             return;
@@ -228,23 +210,16 @@ void exclude_diretory(Message* msg, Message* response)
 
     //verifica se tem a0 ou nao
     verifyPath(path, msg->sizePathName, msg->owner);
-    printf("nome diretorio: %s\n", msg->dirName);
-    printf("path do diretorio a ser removido: %s\n", path);
     
     //coloca o nome do diretorio a ser removido no path
     strncat(path, msg->dirName, msg->sizeDirName);
     path[strlen(path)] = '\0';
-    printf("path do diretorio a ser removido: %s\n", path);
 
     strcpy(msg->pathName, path);
     msg->sizePathName = strlen(msg->pathName);
 
-    printf("Iniciando remocao recursiva do diretorio: %s\n", path);
-
     removeRecursivo(msg, response);
-    printf("path do diretorio a ser removido: %s\n", msg->pathName);
     int ret = rmdir(path);
-    printf("Retorno do rmdir final: %d\n", response->sizePathName);
     if (response->sizePathName != -1 && ret != -1)
     {
         char* newPath = dirname(msg->pathName);
@@ -281,8 +256,6 @@ void create_subDirectory(Message* dc_req, Message* dc_rep)
     
     if (strlen(aux) >= sizeof(aux))
     {
-        // path estourou o buffer ou snprintf inválido
-
         perror("ERRO: create_subDirectory - Path estourou o buffer\n");
 
         dc_rep->sizePathName = -1;
@@ -297,7 +270,7 @@ void create_subDirectory(Message* dc_req, Message* dc_rep)
         printf("Criação de diretório bem sucedida!\n");
 
         strncpy(dc_rep->pathName, aux, sizeof(aux) - 1);
-        dc_rep->pathName[sizeof(aux) - 1] = '\0'; // Garantir terminação
+        dc_rep->pathName[sizeof(aux) - 1] = '\0'; 
 
         dc_rep->sizePathName = (int)strlen(aux);
 
@@ -334,8 +307,6 @@ void write_file(Message* wr_req, Message* wr_rep)
 
         if (n > sizeof(aux) || n < 0 ) 
         {
-            // path estourou o buffer ou snprintf inválido
-
             perror("ERRO: write_file - Path estourou o buffer ou snprintf invalido");
 
             wr_rep->offset = -1;
@@ -351,7 +322,6 @@ void write_file(Message* wr_req, Message* wr_rep)
         return;
     }
 
-    // caso de deletar arquivo (é completamente diferente de limpar os primeiros 16 caracteres ????)
     if(wr_req->offset == 0 && strcmp(wr_req->payload, "") == 0)
     {
         if(remove(aux) != 0) // path relativo faltando  
@@ -393,7 +363,7 @@ void write_file(Message* wr_req, Message* wr_rep)
         return;
     }
 
-    int current_size = ftell(original); // ftell retorna a posição atual
+    int current_size = ftell(original); 
     //printf("\n\n%d\n\n", current_size);
 
     if (current_size == -1L) {
@@ -403,7 +373,6 @@ void write_file(Message* wr_req, Message* wr_rep)
         return;
     }
 
-    // Se o offset requisitado é maior que o tamanho atual, preenchemos
     if (wr_req->offset > current_size) {
         int bytes_to_fill = (int)wr_req->offset - current_size;
 
@@ -421,11 +390,9 @@ void write_file(Message* wr_req, Message* wr_rep)
                 return;
             }
         }
-        // Após o loop, o ponteiro está AGORA no wr_req->offset
     }
     else
     {
-        // Reposiciona o ponteiro para o offset do usuário para sobrescrever
         if (fseek(original, wr_req->offset, SEEK_SET) != 0) {
             perror("ERRO: write_file - Erro ao posicionar ponteiro (fseek SEEK_SET)");
             fclose(original);
@@ -444,14 +411,13 @@ void write_file(Message* wr_req, Message* wr_rep)
         return;
     }
 
-    // 6. Finalização e Resposta
     fclose(original);
 
     wr_rep->owner = wr_req->owner;
     strncpy(wr_rep->pathName, aux, PATH_MAX - 1);
     wr_rep->pathName[PATH_MAX - 1] = '\0';
     wr_rep->sizePathName = (int)strlen(wr_rep->pathName);
-    wr_rep->offset = wr_req->offset; // Retorna o offset original
+    wr_rep->offset = wr_req->offset; 
 
     printf("write file bem sucedido. Escrito %zu bytes em offset %ld no arquivo %s\n", 
            written, wr_req->offset, aux);

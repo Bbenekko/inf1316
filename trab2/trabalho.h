@@ -109,7 +109,7 @@ CABECÁRIOS DAS FUNÇÕES DE SFSS_functions.c
 
 void verifyPath(char path[], int sizePath, int owner);
 
-void rd(Message* msg, Message* response);
+void read_directory(Message* msg, Message* response);
 
 void putNameInResponse(DL_REP* response, const char* name, int isDir);
 

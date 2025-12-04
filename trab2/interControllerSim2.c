@@ -36,13 +36,10 @@ void continueHandler(int signal)
 
 int main(void)
 {
-    //signal(SIGINT, SIG_IGN);
     signal(SIGINT, stopHandler);
     signal(SIGCONT, continueHandler);
 
     printf(GREEN"Pid do controller: %d\n\n"RESET, getpid());
-
-    // Criação e abertura das FIFOs (comunicação entre kernel e controller)
 
     unlink(FIFO_KERNEL_IN);
     if (access(FIFO_KERNEL_IN, F_OK) == -1)
@@ -87,7 +84,6 @@ int main(void)
             write(inKernelFIFO, &msg_to_kernel, 1);
             printf("controller - liberou d1\n");
 
-            //puts("Interrupção do dispositivo 1!");
         }
 
         //IRQ2
@@ -97,12 +93,10 @@ int main(void)
             write(inKernelFIFO, &msg_to_kernel, 1);
             printf("controller - liberou d2\n");
 
-            //puts("Interrupção do dispotivo 2!");
         };
 
         printf("controller enviou pela fifo\n");
 
-        //printf("controller mandou pela fifo\n");
         usleep(TIMESLICE);
     }
 }

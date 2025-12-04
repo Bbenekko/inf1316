@@ -45,7 +45,7 @@ unsigned char retornaIndPid(Info vPids[], int pid);
 void iniciaVetor(Info vInfos[]);
 void configuraFifos(int *fin);
 void stopHandler(int num);
-void send_sfp_request(int sockfd, const Info *req_info);
+void mandar_requisicao(int sockfd, const Info *req_info);
 
 SFP_Packet reply_vec[5];
 
@@ -95,7 +95,7 @@ int main()
     if (sfp_sockfd < 0)
         perror("ERROR opening SFP socket");
 
-    // Configura o endereço do KernelSim para escutar
+
     bzero((char *)&sfp_kerneladdr, sizeof(sfp_kerneladdr));
     sfp_kerneladdr.sin_family = AF_INET;
     sfp_kerneladdr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -104,7 +104,7 @@ int main()
     if (bind(sfp_sockfd, (struct sockaddr *)&sfp_kerneladdr, sizeof(sfp_kerneladdr)) < 0)
         perror("ERROR on SFP binding");
 
-    // Configurar o socket UDP como NÃO-BLOQUEANTE
+
     int flags = fcntl(sfp_sockfd, F_GETFL, 0);
     fcntl(sfp_sockfd, F_SETFL, flags | O_NONBLOCK);
 
@@ -113,55 +113,50 @@ int main()
     configuraFifos(&fifoRq);
     puts("FIFO KERNEL IN criada e aberta para leitura.");
 
-    // b) Lançamento dos Processos Ax (A1 a A5)
+
     char *nameExecs[] = {"ax1", "ax2", "ax3", "ax4", "ax5"};
 
     for (int i = 0; i < 5; i++)
     {
         int pid = fork();
-        if (pid == 0) // Filho (Processo Ax)
+        if (pid == 0) // filho
         {
             printf("Executando filho A%d!\n", i + 1);
-            // Execle chamando o nome do arquivo (ax1, ax2, etc.)
             execle(nameExecs[i], nameExecs[i], NULL, (char *)0);
-            exit(1); // Sai se falhar
+            exit(1); 
         }
-        else // Pai (KernelSim)
+        else 
         {
-            // Salva o PID e para o processo imediatamente
             vPids[i].pid = pid;
-            pIda[i].pid = pid;  // Também salva na SHM
-            pIda[i].estado = 0; // Estado Inicial: Pronto/Espera
+            pIda[i].pid = pid;  
+            pIda[i].estado = 0; 
             kill(pid, SIGSTOP);
         }
         kill(pidInterCont, SIGCONT);
         printf("KernelSim: Controller liberado para iniciar IRQs.\n");
 
-        // c) Inicia o Primeiro Processo Ax (A1)
         indexPidCurrent = 0;
         pIda[0].estado = 1; // Em andamento
         kill(pIda[0].pid, SIGCONT);
         printf("KernelSim: Início da simulação. Processo A1 em execução.\n");
     }
 
-    // c) Lançamento e Bloqueio do InterControllerSim2
+    
     pidInterCont = fork();
 
-    if (!pidInterCont) // Filho (Controller)
+    if (!pidInterCont) // controller
     {
         printf("====================Tentativa de executar o controller!============================\n");
         execle("interControllerSim2", "interControllerSim2", NULL, (char *)0);
         printf("Não foi possível executar o controller!\n");
         exit(1);
     }
-    else // Pai (KernelSim)
+    else 
     {
-        // Bloqueia o Controller Imediatamente (Ele só deve começar após o Kernel liberar)
         kill(pidInterCont, SIGSTOP);
     }
     configuraFifos(&fifoRq); 
 
-    // 2. Libera o Controller (que agora pode abrir a FIFO para escrita)
     kill(pidInterCont, SIGCONT);
 
     indexPidCurrent = 0;
@@ -182,7 +177,7 @@ int main()
 
         if (pauseInt)
         {
-            // fazzer o print
+            // fazer o print
             for (int i = 0; i < 5; i++)
             {
                 kill(pIda[i].pid, SIGSTOP);
@@ -206,45 +201,36 @@ int main()
             semaforoP(semId);
             if ((pIda + i)->pronto == 1)
             {
-                // ** SYSCALL PRONTA! **
                 printf("KernelSim: Syscall PRONTA do PID %d (A%d)\n", (pIda + i)->pid, i + 1);
 
-                // 1. Enviar a requisição SFP (UDP) para o SFSS
-                // Você precisará de uma função que construa e envie a SFP_Packet
-                send_sfp_request(sfp_sockfd, (pIda + i));
+                mandar_requisicao(sfp_sockfd, (pIda + i));
 
-                // 2. Bloquear o processo Ax e colocá-lo na fila de espera de resposta
                 kill((pIda + i)->pid, SIGSTOP);
-                (pIda + i)->estado = 3; // Bloqueado
-                (pIda + i)->pronto = 0; // Sinalizar que a REQ foi processada
+                (pIda + i)->estado = 3; 
+                (pIda + i)->pronto = 0; 
 
-                // Você pode usar as filas D1/D2 ou criar novas filas para REQ/REP
-                // Dependendo da operação (Arquivo ou Diretório), insira o PID na fila de espera SFP
                 if ((pIda + i)->isFile == 1)
                 {
-                    // insereFila(fileRequestWaitQueue, (pIda + i)->pid);
+                     insereFila(fileReplyQueue, (pIda + i)->pid);
                 }
                 else
                 {
-                    // insereFila(dirRequestWaitQueue, (pIda + i)->pid);
+                     insereFila(dirReplyQueue, (pIda + i)->pid);
                 }
             }
             semaforoV(semId);
         }
 
-        // B. PROCESSAR RESPOSTAS SFP (UDP Socket)
         SFP_Packet received_reply;
 
-        // Tenta receber uma resposta (Não Bloqueante)
         int n_sfp = recvfrom(sfp_sockfd, (char *)&received_reply, sizeof(SFP_Packet), 0,
                              (struct sockaddr *)&sfp_serveraddr, &sfp_clientlen);
 
         if (n_sfp > 0)
         {
             int owner_num = received_reply.msg.owner;
-            int owner_index = owner_num - 1; // 1 -> 0, 5 -> 4
+            int owner_index = owner_num - 1; 
 
-            // 1. Armazenar o pacote (usando o índice 0-4)
             memcpy(&reply_vec[owner_index], &received_reply, sizeof(SFP_Packet));
 
             int pid_to_queue = pIda[owner_index].pid;
@@ -260,47 +246,40 @@ int main()
         }
         else if (n_sfp < 0 && errno != EWOULDBLOCK)
         {
-            // Tratar erro real de socket, se houver
-            perror("ERROR in recvfrom SFP");
+            
+            perror("ERROR em recvfrom SFP");
         }
 
-        // C. PROCESSAR INTERRUPÇÕES (FIFO)
-        // Leitura não-bloqueante da FIFO
         if (read(fifoRq, &ch, 1) > 0)
         {
             printf("KernelSim: Recebido IRQ %c\n", ch);
 
-            if (ch == '0') // IRQ0 - Timeslice finished
+            if (ch == '0')
             {
                 if (indexPidCurrent != -1 && vPids[indexPidCurrent].estado == 1)
                 {
                     kill(vPids[indexPidCurrent].pid, SIGSTOP);
-                    vPids[indexPidCurrent].estado = 0; // Coloca em estado de Pronto (Espera)
+                    vPids[indexPidCurrent].estado = 0; 
                     printf("kernel - processo %d bloqueado pelo timeslice\n", vPids[indexPidCurrent].pid);
                 }
 
-                // 2. Buscar o próximo processo pronto (estado == 0) de forma circular
                 int proxId = (indexPidCurrent + 1) % 5;
                 int found = 0;
 
                 for (int i = 0; i < 5; i++)
                 {
-                    // O índice de busca é circular a partir do próximo (indexPidCurrent + 1)
-                    if (vPids[proxId].estado == 0) // O estado 0 deve significar "Pronto para CPU"
+                    if (vPids[proxId].estado == 0) 
                     {
-                        // 3. Liberar e atualizar o estado
                         kill(vPids[proxId].pid, SIGCONT);
 
-                        // **CORREÇÃO AQUI:** Use vPids[proxId].pid para o log
                         printf("kernel - processo %d liberado pelo timeslice\n", vPids[proxId].pid);
 
-                        vPids[proxId].estado = 1; // Estado 1: Em andamento
+                        vPids[proxId].estado = 1;
                         indexPidCurrent = proxId;
                         found = 1;
                         break;
                     }
 
-                    // Avança para o próximo PID (circular)
                     proxId = (proxId + 1) % 5;
                 }
 
@@ -309,48 +288,37 @@ int main()
                     printf("kernel - Aviso: Nenhum processo pronto para escalonar.\n");
                 }
             }
-            else if (ch == '1') // IRQ1 - I/O File finished (Respostas de Arquivo)
+            else if (ch == '1')
             {
                 int pid_to_unblock = excluiFila(fileReplyQueue);
                 if (pid_to_unblock != -1)
                 {
-                    unsigned char ind = retornaIndPid(vPids, pid_to_unblock); // Obtém o índice 0-4
+                    unsigned char ind = retornaIndPid(vPids, pid_to_unblock); 
 
-                    // 1. TRANSFERIR A RESPOSTA (do reply_vec[ind]) para a SHM (pResp[ind])
                     semaforoP(semId);
 
-                    // Copiar os dados relevantes
                     memcpy(pResp[ind].dados, reply_vec[ind].msg.payload, PAYLOAD_MAX);
-                    pResp[ind].valorRetorno = reply_vec[ind].msg.offset; // offset negativo se erro
+                    pResp[ind].valorRetorno = reply_vec[ind].msg.offset; 
                     pResp[ind].pronto = 1;
 
-                    pIda[ind].estado = 0; // Desbloqueado, pronto para rodar
+                    pIda[ind].estado = 0; 
                     kill(pid_to_unblock, SIGCONT);
 
                     semaforoV(semId);
                 }
             }
-            else if (ch == '2') // IRQ2 - I/O Directory finished (Respostas de Diretório)
+            else if (ch == '2') 
             {
                 int pid_to_unblock = excluiFila(dirReplyQueue);
                 if (pid_to_unblock != -1)
                 {
                     unsigned char ind = retornaIndPid(vPids, pid_to_unblock);
 
-                    // 1. TRANSFERIR A RESPOSTA (do reply_vec)
                     semaforoP(semId);
 
-                    // Para Diretório, o payload é usado para o nome e valorRetorno é o strlen ou código de erro.
-                    // Os dados necessários dependem do DC_REP, DR_REP ou DL_REP.
-                    // Para DC/DR, a resposta está em msg.pathName. Você deve ajustar a struct Resposta.
-                    // Assumindo que você usa pResp[ind].dados para a string de path ou dados DL_REP.
-
-                    // Exemplo para DC/DR REP:
-                    // memcpy(pResp[ind].dados, reply_vec[ind].msg.pathName, PATH_MAX);
-                    pResp[ind].valorRetorno = reply_vec[ind].msg.offset; // Ou sizePathName, dependendo do REP
+                    pResp[ind].valorRetorno = reply_vec[ind].msg.offset; 
                     pResp[ind].pronto = 1;
 
-                    // 2. Desbloquear o processo Ax
                     pIda[ind].estado = 0;
                     kill(pid_to_unblock, SIGCONT);
 
@@ -389,13 +357,11 @@ void iniciaVetor(Info vInfos[])
 {
     for (int i = 0; i < 5; i++)
     {
-        // vInfos[i].dir;
         vInfos[i].estado = 0;
         vInfos[i].isFile = 0;
         vInfos[i].modo = 0;
         vInfos[i].offset = 0;
         vInfos[i].pronto = 0;
-        // vInfos[i].subdir;
         vInfos[i].valorPC = 0;
         vInfos[i].pid = 0;
         vInfos[i].valorPC = 0;
@@ -420,37 +386,33 @@ void stopHandler(int num)
     pauseInt = !pauseInt;
 }
 
-void send_sfp_request(int sockfd, const Info *req_info)
+void mandar_requisicao(int sockfd, const Info *req_info)
 {
     struct sockaddr_in serveraddr;
     struct hostent *server;
     SFP_Packet request;
     int n;
 
-    // 1. Construir o SFP_Packet a partir da Info
-
-    // Mapear operação para tipo SFP
     if (req_info->operacao == 'r')
         request.type = SFP_RD_REQ;
     else if (req_info->operacao == 'w')
         request.type = SFP_WR_REQ;
     else if (req_info->operacao == 'a')
-        request.type = SFP_DC_REQ; // 'a' para add/create
+        request.type = SFP_DC_REQ; // 'a' para add
     else if (req_info->operacao == 'e')
-        request.type = SFP_DR_REQ; // 'e' para exclude/remove
+        request.type = SFP_DR_REQ; // 'e' para exclude
     else if (req_info->operacao == 'l')
-        request.type = SFP_DL_REQ; // 'l' para listdir
+        request.type = SFP_DL_REQ; // 'l' para list
     else
     {
         fprintf(stderr, "ERRO: Tipo de operação SFP desconhecido: %c\n", req_info->operacao);
         return;
     }
 
-    // Preencher a struct Message
+    
     request.msg.owner = req_info->dir[1] - '0'; // Ex: 'A1' -> 1
     request.msg.offset = req_info->offset;
 
-    // Construir o path completo (dir/subdir) para o SFP
     char full_path[PATH_MAX];
     snprintf(full_path, PATH_MAX, "%s%s", req_info->dir, req_info->subdir);
 
@@ -458,13 +420,6 @@ void send_sfp_request(int sockfd, const Info *req_info)
     request.msg.pathName[PATH_MAX - 1] = '\0';
     request.msg.sizePathName = (int)strlen(request.msg.pathName);
 
-    // Para DC (add), o dirName é o subdiretório. Para WR, o payload é o que deve ser escrito.
-    // **NOTA:** Aqui você precisaria adaptar a Info para saber qual é o payload/dirname.
-    // Assumindo que o payload e dirname estão na Info (adaptar se necessário).
-    // strcpy(request.msg.payload, req_info->payload);
-    // strcpy(request.msg.dirName, req_info->dirName);
-
-    // 2. Configurar o endereço do servidor SFSS (RECEPTOR)
     server = gethostbyname(SFSS_HOSTNAME);
     if (server == NULL)
     {
@@ -476,9 +431,8 @@ void send_sfp_request(int sockfd, const Info *req_info)
     serveraddr.sin_family = AF_INET;
     bcopy((char *)server->h_addr_list,
           (char *)&serveraddr.sin_addr.s_addr, server->h_length);
-    serveraddr.sin_port = htons(SFSS_SERVER_PORT); // Porta do Servidor
+    serveraddr.sin_port = htons(SFSS_SERVER_PORT); 
 
-    // 3. Enviar o pacote SFP
     int serverlen = sizeof(serveraddr);
     n = sendto(sockfd, (char *)&request, sizeof(SFP_Packet), 0, (struct sockaddr *)&serveraddr, serverlen);
 
