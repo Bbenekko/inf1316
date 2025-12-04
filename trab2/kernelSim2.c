@@ -110,38 +110,63 @@ int main()
 
     printf("KernelSim escutando SFP Replies na porta %d\n", SFSS_REPLY_PORT);
 
-    char *nameExecs[] = {"ax1", "ax2", "ax3", "ax4", "ax5"};
-    char **ptrNameExecs = nameExecs;
+    configuraFifos(&fifoRq);
+    puts("FIFO KERNEL IN criada e aberta para leitura.");
 
-    pidInterCont = fork();
-    if (!pidInterCont) {
-        execle(ptrNameExecs[0], ptrNameExecs[0], NULL, (char *)0);
-    } else {
-        // O KernelSim (pai) pausa o controller imediatamente
-        kill(pidInterCont, SIGSTOP); 
+    // b) Lançamento dos Processos Ax (A1 a A5)
+    char *nameExecs[] = {"ax1", "ax2", "ax3", "ax4", "ax5"};
+
+    for (int i = 0; i < 5; i++)
+    {
+        int pid = fork();
+        if (pid == 0) // Filho (Processo Ax)
+        {
+            printf("Executando filho A%d!\n", i + 1);
+            // Execle chamando o nome do arquivo (ax1, ax2, etc.)
+            execle(nameExecs[i], nameExecs[i], NULL, (char *)0);
+            exit(1); // Sai se falhar
+        }
+        else // Pai (KernelSim)
+        {
+            // Salva o PID e para o processo imediatamente
+            vPids[i].pid = pid;
+            pIda[i].pid = pid;  // Também salva na SHM
+            pIda[i].estado = 0; // Estado Inicial: Pronto/Espera
+            kill(pid, SIGSTOP);
+        }
+        kill(pidInterCont, SIGCONT);
+        printf("KernelSim: Controller liberado para iniciar IRQs.\n");
+
+        // c) Inicia o Primeiro Processo Ax (A1)
+        indexPidCurrent = 0;
+        pIda[0].estado = 1; // Em andamento
+        kill(pIda[0].pid, SIGCONT);
+        printf("KernelSim: Início da simulação. Processo A1 em execução.\n");
     }
 
-    configuraFifos(&fifoRq);
-
-    kill(pidInterCont, SIGCONT);
-
-    indexPidCurrent = 0;
-    pIda[0].estado = 1; 
-    kill(pIda[0].pid, SIGCONT);
-
+    // c) Lançamento e Bloqueio do InterControllerSim2
     pidInterCont = fork();
 
-    if (!pidInterCont)
+    if (!pidInterCont) // Filho (Controller)
     {
         printf("====================Tentativa de executar o controller!============================\n");
         execle("interControllerSim2", "interControllerSim2", NULL, (char *)0);
         printf("Não foi possível executar o controller!\n");
         exit(1);
     }
-    else
+    else // Pai (KernelSim)
     {
+        // Bloqueia o Controller Imediatamente (Ele só deve começar após o Kernel liberar)
         kill(pidInterCont, SIGSTOP);
     }
+    configuraFifos(&fifoRq); 
+
+    // 2. Libera o Controller (que agora pode abrir a FIFO para escrita)
+    kill(pidInterCont, SIGCONT);
+
+    indexPidCurrent = 0;
+    pIda[0].estado = 1;
+    kill(pIda[0].pid, SIGCONT);
 
     puts("Tentativa de executar fifo!");
     configuraFifos(&fifoRq);
