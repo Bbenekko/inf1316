@@ -44,7 +44,7 @@ int main(void)
             operacao = "rw"[rand()%2];
         } 
 
-        if (PC >= MAX)
+        if (pIda->valorPC >= MAX)
         {
             estado = 2;
         }

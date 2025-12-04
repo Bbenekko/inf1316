@@ -98,7 +98,7 @@ int main()
         }
         else
         {  
-            vPids[i].pid = pid;
+            pIda[i].pid = pid;
             kill(pid, SIGSTOP);
         }
     }
@@ -132,7 +132,8 @@ int main()
             //fazzer o print 
             for(int i = 0; i < 5; i++)
             {
-                kill(vPids[i].pid, SIGSTOP);
+                kill(pIda[i].pid, SIGSTOP);
+                printf("| %d |    %d    |    %c    | %s | %s | %d |\n", pIda->valorPC, pIda->estado, pIda->operacao, pIda->dir, pIda->subdir, pIda->isFile);
 
             }
             kill(pidInterCont, SIGSTOP);
@@ -141,8 +142,8 @@ int main()
         else{
             for(int i = 0; i < 5; i++)
             {
-                if (vPids[i].estado == 1)
-                    kill(vPids[i].pid, SIGCONT);
+                if (pIda[i].estado == 1)
+                    kill(pIda[i].pid, SIGCONT);
             }
             kill(pidInterCont, SIGCONT);
         }
@@ -151,6 +152,7 @@ int main()
         {
             semaforoP(semId);
             for(int i = 0; i < 5; i++)
+<<<<<<< Updated upstream
             {
                 if ((pIda + i)->pronto == 1)
                     ind = i;                  
@@ -163,6 +165,49 @@ int main()
         semaforoP(semId);
         if(infoPronto->isFile == 1) //arquivo
         {
+=======
+            {
+                if ((pIda + i)->pronto == 1)
+                {
+                    ind = i;
+                    break;
+                }                 
+            }
+            semaforoV(semId);
+        }
+
+        Info* infoPronto = pIda + ind;
+        Resposta* respPronto = pResp + ind;
+        semaforoP(semId);
+
+         if(infoPronto->estado == '0')
+            {
+                if(vPids[indexPidCurrent].estado == 1)
+                {
+                    kill(vPids[indexPidCurrent].pid, SIGSTOP);
+                    vPids[indexPidCurrent].estado = 0;
+                    printf("kernel - processo %d bloqueado pelo timeslice\n", vPids[indexPidCurrent].pid);
+                }                
+
+                int proxId = (indexPidCurrent + 1) % 5;
+                for(int i = 0; i < 5; i++)
+                {
+                    if(vPids[proxId].estado == 0)
+                    {
+                        kill(vPids[proxId].pid, SIGCONT);
+                        printf("kernel - processo %d liberado pelo timeslice\n", vPids[indexPidCurrent].pid);
+                        vPids[proxId].estado = 1;
+                        indexPidCurrent = proxId;
+                        break;
+                    }
+
+                    proxId = (proxId + 1) % 5;
+                }                    
+            }
+        if(infoPronto->isFile == 1) //arquivo
+        {
+
+>>>>>>> Stashed changes
             if(infoPronto->operacao == 'r')
             {
                 int pid = excluiFila(filaD1);

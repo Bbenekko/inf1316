@@ -37,11 +37,13 @@ struct info
     int valorPC;
     unsigned char estado; // 0 - espera ; 1 - em andamento ; 2 terminado ; 3 - bloqueado
     unsigned char modo; // Apenas se estiver bloqueado: 0 - nnao esta bloqueado ; 1 - leitura; 2 - escrita
+    int isFile; // Apenas se estiver bloqueado: 0 - diretorio ; 1 - arquivo
     char operacao;
     char dir[3];
     char subdir[100];
     int offset;
     int pid;
+    int pronto; // 0 - nao ; 1 - sim
 };
 
 struct resposta
